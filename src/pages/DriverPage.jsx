@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   getDriverSeasonStats, getDriverResults, getDriverCareerStats,
-  getDriverSeasonHistory, getDriverInfo, getDriverWins,
+  getDriverSeasonHistory, getDriverInfo, getDriverAllResults,
 } from '../api/jolpica'
 import { getWikipediaDriverData, getWikipediaDriverStats } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
@@ -195,29 +195,43 @@ function RecentResults({ results, season }) {
   )
 }
 
-function WinsHistory({ wins, navigate }) {
-  if (!wins?.length) return null
-  const sorted = [...wins].sort((a, b) => parseInt(b.season) - parseInt(a.season))
+function RaceHistory({ races, navigate }) {
+  if (!races?.length) return null
+  const sorted = [...races].sort((a, b) => {
+    const dy = parseInt(b.season) - parseInt(a.season)
+    return dy !== 0 ? dy : parseInt(b.round) - parseInt(a.round)
+  })
 
   return (
-    <Panel title={`Vitórias · ${wins.length}`} icon={<Trophy size={13} aria-hidden />}>
+    <Panel title={`Histórico · ${races.length}`} icon={<Activity size={13} aria-hidden />}>
       <div className="overflow-y-auto mt-2" style={{ maxHeight: 480 }}>
         {sorted.map((race, i) => {
-          const result  = race.Results?.[0]
+          const result      = race.Results?.[0]
+          if (!result) return null
+          const pos         = parseInt(result.position ?? 99)
+          const status      = result.status ?? ''
+          const isDNF       = status !== 'Finished' && !status.startsWith('+')
+          const isWin       = pos === 1
+          const isPodium    = !isDNF && pos <= 3
           const circuitCode = CIRCUIT_COUNTRY[race.Circuit?.circuitId]
-          const teamColor   = getTeamColor(result?.Constructor?.name)
+          const teamColor   = getTeamColor(result.Constructor?.name)
+
+          const posColor = isWin    ? 'var(--color-gold)'
+            : isPodium              ? 'var(--color-f1)'
+            : isDNF                 ? 'rgba(255,255,255,0.2)'
+            :                         'var(--color-text-mute)'
+
           return (
             <motion.div
               key={`${race.season}-${race.round}`}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: Math.min(i * 0.015, 0.5) }}
+              transition={{ delay: Math.min(i * 0.006, 0.4) }}
               className="flex items-center gap-3 py-1.5 px-3 rounded-lg cursor-pointer transition-colors hover:bg-[var(--color-surface-2)]"
               style={{ borderBottom: '1px solid var(--color-border-mute)' }}
               onClick={() => navigate(`/circuit/${race.Circuit?.circuitId}`)}
             >
-              <div className="num font-black text-sm w-10 flex-shrink-0"
-                style={{ color: i === 0 ? 'var(--color-gold)' : 'var(--color-text-mute)' }}>
+              <div className="num text-xs w-10 flex-shrink-0 text-text-mute">
                 {race.season}
               </div>
               {circuitCode
@@ -225,19 +239,18 @@ function WinsHistory({ wins, navigate }) {
                 : <span className="w-[18px]" />
               }
               <div className="flex-1 min-w-0">
-                <span className="text-xs font-bold text-text">
+                <span className="text-xs font-semibold text-text truncate block">
                   {race.raceName?.replace(' Grand Prix', ' GP')}
                 </span>
               </div>
-              <div className="text-[10px] text-right flex-shrink-0 hidden sm:block" style={{ color: teamColor }}>
-                {result?.Constructor?.name}
+              <div className="text-[10px] text-right flex-shrink-0 hidden sm:block truncate max-w-[90px]"
+                style={{ color: teamColor + 'cc' }}>
+                {result.Constructor?.name}
               </div>
-              {result?.Time?.time && (
-                <div className="flex items-center gap-1 num text-[9px] text-text-mute min-w-max">
-                  <Clock size={9} aria-hidden />
-                  {result.Time.time}
-                </div>
-              )}
+              <div className="num font-black text-xs w-9 text-right flex-shrink-0"
+                style={{ color: posColor }}>
+                {isDNF ? 'DNF' : `P${pos}`}
+              </div>
             </motion.div>
           )
         })}
@@ -337,10 +350,10 @@ export function DriverPage() {
     staleTime: 300_000,
   })
 
-  // Race wins list (all-time) — all drivers
-  const { data: allWins } = useQuery({
-    queryKey: ['driverWins', driverId],
-    queryFn: () => getDriverWins(driverId),
+  // Full race history — all drivers, all results (position + correct team per race)
+  const { data: allRaces } = useQuery({
+    queryKey: ['driverAllResults', driverId],
+    queryFn: () => getDriverAllResults(driverId),
     enabled: !!driverId && !standLoading,
     staleTime: 86_400_000,
   })
@@ -567,13 +580,13 @@ export function DriverPage() {
               {!resLoading && <RecentResults results={results} season={displaySeason} />}
             </div>
           </div>
-          {allWins?.length > 0 && <WinsHistory wins={allWins} navigate={navigate} />}
+          {allRaces?.length > 0 && <RaceHistory races={allRaces} navigate={navigate} />}
         </>
       ) : (
-        // Retired driver: wins list + season history side by side, then chart
+        // Retired driver: full race history + season history side by side, then chart
         <>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <WinsHistory wins={allWins} navigate={navigate} />
+            <RaceHistory races={allRaces} navigate={navigate} />
             <SeasonHistoryTable history={history} navigate={navigate} />
           </div>
           {history && history.length >= 2 && <SeasonChart history={history} />}
