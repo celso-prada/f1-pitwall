@@ -337,11 +337,11 @@ export function DriverPage() {
     staleTime: 300_000,
   })
 
-  // Race wins list (all-time) — only for retired drivers
+  // Race wins list (all-time) — all drivers
   const { data: allWins } = useQuery({
     queryKey: ['driverWins', driverId],
     queryFn: () => getDriverWins(driverId),
-    enabled: !!driverId && !isActive && !standLoading,
+    enabled: !!driverId && !standLoading,
     staleTime: 86_400_000,
   })
 
@@ -555,19 +555,22 @@ export function DriverPage() {
 
       {/* Main content */}
       {isActive ? (
-        // Active driver: charts + history
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="space-y-4">
-            {history && <SeasonChart history={history} />}
-            {!resLoading && <PositionChart results={results} color={color} season={displaySeason} />}
+        // Active driver: current season charts + win history
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              {history && <SeasonChart history={history} />}
+              {!resLoading && <PositionChart results={results} color={color} season={displaySeason} />}
+            </div>
+            <div className="space-y-4">
+              {history && <SeasonHistoryTable history={history} navigate={navigate} />}
+              {!resLoading && <RecentResults results={results} season={displaySeason} />}
+            </div>
           </div>
-          <div className="space-y-4">
-            {history && <SeasonHistoryTable history={history} navigate={navigate} />}
-            {!resLoading && <RecentResults results={results} season={displaySeason} />}
-          </div>
-        </div>
+          {allWins?.length > 0 && <WinsHistory wins={allWins} navigate={navigate} />}
+        </>
       ) : (
-        // Retired driver: wins list + season history side by side
+        // Retired driver: wins list + season history side by side, then chart
         <>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <WinsHistory wins={allWins} navigate={navigate} />
