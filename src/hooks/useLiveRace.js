@@ -10,6 +10,7 @@ import {
   getTeamRadio,
   getLaps,
   getStints,
+  getSessions,
   buildCurrentOrder,
   buildLatestIntervals,
   buildCurrentStints,
@@ -108,5 +109,27 @@ export function useStints(sessionKey, isLive) {
     enabled: !!sessionKey,
     refetchInterval: isLive ? 15_000 : false,
     select: buildCurrentStints,
+  })
+}
+
+export function useRaceSessions() {
+  return useQuery({
+    queryKey: ['raceSessions', 2025],
+    queryFn: () => getSessions(2025).then(data =>
+      data.filter(s => s.session_type === 'Race').reverse()
+    ),
+    staleTime: 60 * 60 * 1000,
+  })
+}
+
+export function useSessionRadio(sessionKey) {
+  return useQuery({
+    queryKey: ['sessionRadio', sessionKey],
+    queryFn: () => Promise.all([
+      getTeamRadio(sessionKey),
+      getSessionDrivers(sessionKey),
+    ]).then(([radio, drivers]) => ({ radio, drivers })),
+    enabled: !!sessionKey,
+    staleTime: 5 * 60 * 1000,
   })
 }
