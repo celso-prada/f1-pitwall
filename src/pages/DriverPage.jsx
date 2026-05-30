@@ -268,13 +268,17 @@ export function DriverPage() {
 
         {/* Driver photo — fades out to the left */}
         {photo && (
-          <div className="absolute right-0 top-0 bottom-0 w-56 overflow-hidden">
+          <div className="absolute right-0 top-0 bottom-0 w-64 overflow-hidden">
             <img
               src={photo}
               alt=""
               aria-hidden
-              className="w-full h-full object-cover object-top"
-              style={{ maskImage: 'linear-gradient(to left, rgba(0,0,0,0.55) 40%, transparent)', WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.55) 40%, transparent)' }}
+              className="w-full h-full object-cover"
+              style={{
+                objectPosition: '50% 25%',
+                maskImage: 'linear-gradient(to left, rgba(0,0,0,0.6) 40%, transparent)',
+                WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.6) 40%, transparent)',
+              }}
               onError={e => { e.target.style.display = 'none' }}
             />
           </div>

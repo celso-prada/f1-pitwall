@@ -111,7 +111,7 @@ function HeroCountdown({ raceDateTime, raceName, raceLocation }) {
   )
 }
 
-function LastRacePodium({ race, photos }) {
+function LastRacePodium({ race }) {
   const navigate = useNavigate()
   if (!race) return null
   const top3 = race.Results?.slice(0, 3) ?? []
@@ -127,7 +127,6 @@ function LastRacePodium({ race, photos }) {
           if (!r) return null
           const color = getTeamColor(r.Constructor.name)
           const natCode = DRIVER_NAT_CODE[r.Driver.nationality]
-          const photo = photos[r.Driver.code]
           return (
             <div
               key={idx}
@@ -136,27 +135,18 @@ function LastRacePodium({ race, photos }) {
             >
               <div className="text-xl">{medals[idx]}</div>
               <div
-                className="w-full rounded-t-lg flex flex-col items-center justify-end p-2 relative overflow-hidden transition-opacity group-hover:opacity-85"
+                className="w-full rounded-t-lg flex flex-col items-center justify-center p-2 relative overflow-hidden transition-opacity group-hover:opacity-80"
                 style={{
                   height: heights[displayIdx],
-                  background: `linear-gradient(to top, ${color}38, ${color}08)`,
+                  background: `linear-gradient(to top, ${color}28, ${color}08)`,
                   border: `1px solid ${color}35`,
                 }}
               >
-                {photo && (
-                  <img
-                    src={photo}
-                    alt=""
-                    aria-hidden
-                    className="absolute inset-0 w-full h-full object-cover object-top opacity-60"
-                    style={{ maskImage: 'linear-gradient(to bottom, transparent 10%, rgba(0,0,0,0.7) 100%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 10%, rgba(0,0,0,0.7) 100%)' }}
-                    onError={e => { e.target.style.display = 'none' }}
-                  />
-                )}
-                <div className="relative z-10 flex flex-col items-center">
-                  {!photo && <Flag code={natCode} size={14} />}
-                  <span className="text-xs font-black text-white drop-shadow mt-0.5">{r.Driver.code}</span>
-                </div>
+                <Flag code={natCode} size={14} />
+                <span className="text-xs font-black text-text mt-1">{r.Driver.code}</span>
+                <span className="text-[9px] mt-0.5 truncate w-full text-center" style={{ color }}>
+                  {r.Constructor.name}
+                </span>
               </div>
             </div>
           )
@@ -196,7 +186,7 @@ function LeaderCard({ standing, photos }) {
         </div>
       )}
 
-      <div className="relative z-10 flex flex-col gap-1 p-4">
+      <div className="relative z-10 flex flex-col gap-1 px-5 py-4">
         <div className="text-[9px] text-text-mute uppercase tracking-wider">Líder do Campeonato</div>
         <div className="flex items-center gap-2 mt-0.5">
           <Flag code={natCode} size={14} />
@@ -265,7 +255,7 @@ export function HomePage() {
             <LeaderCard standing={leader} photos={photos} />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex-1">
-            <LastRacePodium race={lastRace} photos={photos} />
+            <LastRacePodium race={lastRace} />
           </motion.div>
         </div>
       </div>
