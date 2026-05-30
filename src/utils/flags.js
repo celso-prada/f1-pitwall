@@ -13,6 +13,34 @@ export const CONSTRUCTOR_NAT_CODE = {
   American: 'US', Austrian: 'AT', Swiss: 'CH',
 }
 
+// circuitId → OpenF1 circuit_short_name (exact string for API queries)
+export const CIRCUIT_OPENF1_NAME = {
+  bahrain: 'Bahrain',
+  jeddah: 'Jeddah',
+  albert_park: 'Albert Park',
+  suzuka: 'Suzuka',
+  shanghai: 'Shanghai',
+  miami: 'Miami',
+  imola: 'Imola',
+  monaco: 'Monaco',
+  villeneuve: 'Montréal',
+  catalunya: 'Catalunya',
+  red_bull_ring: 'Red Bull Ring',
+  silverstone: 'Silverstone',
+  hungaroring: 'Hungaroring',
+  spa: 'Spa-Francorchamps',
+  zandvoort: 'Zandvoort',
+  monza: 'Monza',
+  baku: 'Baku',
+  marina_bay: 'Marina Bay',
+  americas: 'Circuit of the Americas',
+  rodriguez: 'Hermanos Rodríguez',
+  interlagos: 'Interlagos',
+  vegas: 'Las Vegas',
+  losail: 'Lusail',
+  yas_marina: 'Yas Marina',
+}
+
 // circuitId → ISO country code (lowercase for flag-icons)
 export const CIRCUIT_COUNTRY = {
   bahrain: 'bh', jeddah: 'sa', albert_park: 'au', suzuka: 'jp',

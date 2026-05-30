@@ -53,6 +53,28 @@ export async function getSessions(year = 2025) {
   return get(`/sessions?year=${year}`)
 }
 
+// Fetch all sessions for a specific circuit in a given year.
+// circuitShortName must match OpenF1's circuit_short_name exactly.
+// Returns [] when the circuit/year is not in OpenF1 (pre-2023 seasons).
+export async function getCircuitSessions(year, circuitShortName) {
+  if (!circuitShortName) return []
+  try {
+    const res = await fetch(
+      `${BASE}/sessions?year=${year}&circuit_short_name=${encodeURIComponent(circuitShortName)}`,
+      { signal: AbortSignal.timeout(6000) }
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data)
+      ? data
+          .filter(s => ['Practice', 'Qualifying', 'Sprint', 'Race'].includes(s.session_type))
+          .sort((a, b) => new Date(a.date_start) - new Date(b.date_start))
+      : []
+  } catch {
+    return []
+  }
+}
+
 // Build latest stint per driver (current compound + lap age)
 export function buildCurrentStints(stints) {
   const latest = {}
