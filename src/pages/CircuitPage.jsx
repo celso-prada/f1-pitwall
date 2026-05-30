@@ -19,13 +19,15 @@ export function CircuitPage() {
     queryKey: ['circuitResults', circuitId],
     queryFn: () => getCircuitResults(circuitId),
     enabled: !!circuitId,
+    staleTime: 3_600_000,
   })
 
-  const lastRace       = races?.at(-1)
-  const circuit        = lastRace?.Circuit
-  const location       = circuit?.Location
+  const sorted          = [...(races ?? [])].sort((a, b) => parseInt(b.season) - parseInt(a.season))
+  const lastRace        = sorted[0]
+  const circuit         = lastRace?.Circuit
+  const location        = circuit?.Location
   const circuitImageUrl = getCircuitImage(circuitId)
-  const countryCode    = CIRCUIT_COUNTRY[circuitId]
+  const countryCode     = CIRCUIT_COUNTRY[circuitId]
 
   if (isLoading) {
     return (
@@ -104,9 +106,12 @@ export function CircuitPage() {
         </div>
 
         {/* Race history */}
-        <Panel title="Vencedores Recentes" icon={<Trophy size={13} aria-hidden />}>
-          <div className="space-y-1.5 mt-2">
-            {[...(races ?? [])].reverse().map((race, i) => {
+        <Panel
+          title={`Todos os Vencedores${sorted.length ? ` · ${sorted.length}` : ''}`}
+          icon={<Trophy size={13} aria-hidden />}
+        >
+          <div className="overflow-y-auto mt-2" style={{ maxHeight: 480 }}>
+            {sorted.map((race, i) => {
               const winner = race.Results?.[0]
               if (!winner) return null
               const color   = getTeamColor(winner.Constructor.name)
@@ -116,22 +121,29 @@ export function CircuitPage() {
                   key={race.season}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="flex items-center gap-3 py-2 px-3 rounded-xl cursor-pointer transition-colors hover:bg-[var(--color-surface-2)]"
+                  transition={{ delay: Math.min(i * 0.02, 0.4) }}
+                  className="flex items-center gap-3 py-1.5 px-3 rounded-lg cursor-pointer transition-colors hover:bg-[var(--color-surface-2)]"
+                  style={{ borderBottom: '1px solid var(--color-border-mute)' }}
                   onClick={() => navigate(`/driver/${winner.Driver.driverId}`)}
                 >
-                  <div className="num text-text-mute font-black text-sm w-10">{race.season}</div>
-                  <Flag code={natCode} size={14} />
-                  <div className="flex-1">
-                    <span className="text-sm font-bold text-text">
+                  <div className="num font-black text-sm w-10 flex-shrink-0" style={{ color: i === 0 ? 'var(--color-gold)' : 'var(--color-text-mute)' }}>
+                    {race.season}
+                  </div>
+                  <Flag code={natCode} size={13} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-bold text-text">
                       {winner.Driver.givenName} {winner.Driver.familyName}
                     </span>
                   </div>
-                  <div className="text-xs text-right" style={{ color }}>{winner.Constructor.name}</div>
-                  <div className="flex items-center gap-1 num text-[9px] text-text-mute min-w-max">
-                    <Clock size={9} aria-hidden />
-                    {winner.Time?.time ?? winner.status}
+                  <div className="text-[10px] text-right flex-shrink-0 hidden sm:block" style={{ color }}>
+                    {winner.Constructor.name}
                   </div>
+                  {winner.Time?.time && (
+                    <div className="flex items-center gap-1 num text-[9px] text-text-mute min-w-max">
+                      <Clock size={9} aria-hidden />
+                      {winner.Time.time}
+                    </div>
+                  )}
                 </motion.div>
               )
             })}

@@ -43,8 +43,16 @@ export async function getDriverSeasonStats(driverId) {
 }
 
 export async function getCircuitResults(circuitId) {
-  const data = await get(`/circuits/${circuitId}/results.json?limit=5`)
-  return data.MRData.RaceTable.Races ?? []
+  const first = await get(`/circuits/${circuitId}/results/1.json?limit=100`)
+  const races = first.MRData.RaceTable.Races ?? []
+  const total = parseInt(first.MRData.total)
+  if (total <= 100) return races
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil((total - 100) / 100) }, (_, i) =>
+      get(`/circuits/${circuitId}/results/1.json?limit=100&offset=${(i + 1) * 100}`)
+    )
+  )
+  return [...races, ...pages.flatMap(p => p.MRData.RaceTable.Races ?? [])]
 }
 
 export async function getDriverCareerStats(driverId) {
