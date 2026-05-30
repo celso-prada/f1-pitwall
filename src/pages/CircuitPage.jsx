@@ -127,13 +127,14 @@ export function CircuitPage() {
   const circuitImageUrl = getCircuitImage(circuitId)
   const countryCode     = CIRCUIT_COUNTRY[circuitId]
   const openf1Name      = CIRCUIT_OPENF1_NAME[circuitId]
-  const lastSeason      = lastRace?.season ? parseInt(lastRace.season) : null
+  const thisYear        = new Date().getFullYear()
 
-  // OpenF1 sessions — only fetch for circuits that appear in recent seasons (2023+)
+  // OpenF1 sessions — always queries the current season year.
+  // Returns [] for circuits not on this year's calendar → panel stays hidden.
   const { data: sessions = [] } = useQuery({
-    queryKey: ['circuitSessions', circuitId, lastSeason],
-    queryFn: () => getCircuitSessions(lastSeason, openf1Name),
-    enabled: !!openf1Name && !!lastSeason && lastSeason >= 2023,
+    queryKey: ['circuitSessions', circuitId, thisYear],
+    queryFn: () => getCircuitSessions(thisYear, openf1Name),
+    enabled: !!openf1Name,
     staleTime: 3_600_000,
   })
 
@@ -215,7 +216,7 @@ export function CircuitPage() {
           </div>
 
           {/* Weekend schedule — only shown when OpenF1 has session data */}
-          <WeekendSchedule sessions={sessions} season={lastSeason} />
+          <WeekendSchedule sessions={sessions} season={thisYear} />
         </div>
 
         {/* Right: all-time winners */}
