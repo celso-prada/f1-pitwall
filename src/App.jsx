@@ -25,7 +25,7 @@ export default function App() {
       <BrowserRouter>
         <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
           <Header />
-          <main>
+          <main className="pb-20 md:pb-0">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/live" element={<LivePage />} />

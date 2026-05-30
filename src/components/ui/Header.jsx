@@ -90,65 +90,96 @@ export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const isActive = (path) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
+
   return (
-    <header className="sticky top-0 z-50" style={{ background: 'var(--color-bg)' }}>
-      <TickerBar />
+    <>
+      {/* ── Top header ── */}
+      <header className="sticky top-0 z-50" style={{ background: 'var(--color-bg)' }}>
+        <TickerBar />
 
-      <div className="glass border-b" style={{ borderColor: 'var(--color-border)' }}>
-        <div className="w-full max-w-[1800px] mx-auto flex items-center gap-4 px-4 lg:px-6 h-14">
-          {/* Logo */}
-          <button
-            onClick={() => navigate('/')}
-            aria-label="F1 Pitwall — início"
-            className="flex items-center gap-2.5 flex-shrink-0 group"
-          >
-            <div
-              className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0 transition-opacity group-hover:opacity-85"
-              style={{ background: 'var(--color-f1)' }}
+        <div className="glass border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="w-full max-w-[1800px] mx-auto flex items-center gap-4 px-4 lg:px-6 h-14">
+            {/* Logo */}
+            <button
+              onClick={() => navigate('/')}
+              aria-label="F1 Pitwall — início"
+              className="flex items-center gap-2.5 flex-shrink-0 group"
             >
-              <span className="text-white font-black text-[11px] font-display tracking-tight">F1</span>
-            </div>
-            <span className="font-display font-bold text-text text-sm tracking-widest uppercase hidden sm:block">
-              PITWALL
-            </span>
-          </button>
+              <div
+                className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0 transition-opacity group-hover:opacity-85"
+                style={{ background: 'var(--color-f1)' }}
+              >
+                <span className="text-white font-black text-[11px] font-display tracking-tight">F1</span>
+              </div>
+              <span className="font-display font-bold text-text text-sm tracking-widest uppercase hidden sm:block">
+                PITWALL
+              </span>
+            </button>
 
-          {/* Divider */}
-          <div className="w-px h-5 hidden sm:block" style={{ background: 'var(--color-border-strong)' }} />
+            {/* Divider — desktop only */}
+            <div className="w-px h-5 hidden md:block" style={{ background: 'var(--color-border-strong)' }} />
 
-          {/* Nav */}
-          <nav className="flex items-center gap-0.5" role="navigation" aria-label="Navegação principal">
-            {NAV.map(({ path, label, icon: Icon }) => {
-              const active = path === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(path)
-              return (
-                <button
-                  key={path}
-                  onClick={() => navigate(path)}
-                  aria-current={active ? 'page' : undefined}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    color: active ? '#fff' : 'var(--color-text-mute)',
-                    background: active ? 'var(--color-f1)' : 'transparent',
-                  }}
-                >
-                  <Icon size={13} aria-hidden />
-                  <span className="hidden md:block">{label}</span>
-                </button>
-              )
-            })}
-          </nav>
+            {/* Nav — desktop only (mobile uses bottom bar) */}
+            <nav className="hidden md:flex items-center gap-0.5" role="navigation" aria-label="Navegação principal">
+              {NAV.map(({ path, label, icon: Icon }) => {
+                const active = isActive(path)
+                return (
+                  <button
+                    key={path}
+                    onClick={() => navigate(path)}
+                    aria-current={active ? 'page' : undefined}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+                    style={{
+                      color: active ? '#fff' : 'var(--color-text-mute)',
+                      background: active ? 'var(--color-f1)' : 'transparent',
+                    }}
+                  >
+                    <Icon size={13} aria-hidden />
+                    <span className="hidden lg:block">{label}</span>
+                  </button>
+                )
+              })}
+            </nav>
 
-          <div className="flex-1" />
+            <div className="flex-1" />
+            <LiveSessionBadge />
+            <NextRaceCountdown />
+          </div>
 
-          <LiveSessionBadge />
-          <NextRaceCountdown />
+          <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, var(--color-f1) 50%, transparent)' }} />
         </div>
+      </header>
 
-        {/* Red accent line */}
-        <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, var(--color-f1) 50%, transparent)' }} />
-      </div>
-    </header>
+      {/* ── Bottom navigation bar — mobile only ── */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t"
+        style={{ background: 'rgba(10,10,10,0.97)', borderColor: 'var(--color-border)', backdropFilter: 'blur(12px)', height: 64 }}
+        role="navigation"
+        aria-label="Navegação principal"
+      >
+        {NAV.map(({ path, label, icon: Icon }) => {
+          const active = isActive(path)
+          return (
+            <button
+              key={path}
+              onClick={() => navigate(path)}
+              aria-current={active ? 'page' : undefined}
+              className="flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all active:scale-95"
+              style={{ color: active ? 'var(--color-f1)' : 'var(--color-text-mute)' }}
+            >
+              <div
+                className="flex items-center justify-center w-10 h-7 rounded-xl transition-all"
+                style={{ background: active ? 'rgba(225,6,0,0.15)' : 'transparent' }}
+              >
+                <Icon size={active ? 20 : 18} aria-hidden />
+              </div>
+              <span className="text-[10px] font-semibold leading-none">{label}</span>
+            </button>
+          )
+        })}
+      </nav>
+    </>
   )
 }
