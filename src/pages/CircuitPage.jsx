@@ -198,13 +198,13 @@ export function CircuitPage() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-2xl overflow-hidden p-8"
+        className="relative rounded-2xl overflow-hidden p-5 sm:p-8"
         style={{ background: 'linear-gradient(135deg, var(--color-surface) 0%, #180800 100%)', border: '1px solid rgba(225,6,0,0.15)' }}
       >
         <div className="absolute inset-0 opacity-10"
           style={{ background: 'radial-gradient(ellipse at right, var(--color-f1), transparent 60%)' }} />
         <div className="relative">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             {countryCode && <Flag code={countryCode} size={20} />}
             <div className="flex items-center gap-1.5">
               <MapPin size={13} className="text-red-500" aria-hidden />
@@ -213,7 +213,9 @@ export function CircuitPage() {
               </span>
             </div>
           </div>
-          <h1 className="font-display font-bold text-3xl text-text uppercase">{circuit?.circuitName}</h1>
+          <h1 className="font-display font-bold text-2xl sm:text-3xl text-text uppercase leading-tight">
+            {circuit?.circuitName}
+          </h1>
           {races?.length && (
             <p className="num text-xs text-text-mute mt-2">{races.length} vencedores históricos</p>
           )}
@@ -278,11 +280,11 @@ export function CircuitPage() {
                       {winner.Driver.givenName} {winner.Driver.familyName}
                     </span>
                   </div>
-                  <div className="text-[10px] text-right flex-shrink-0 hidden sm:block" style={{ color }}>
+                  <div className="text-[10px] text-right flex-shrink-0 hidden xs:block" style={{ color }}>
                     {winner.Constructor.name}
                   </div>
                   {winner.Time?.time && (
-                    <div className="flex items-center gap-1 num text-[9px] text-text-mute min-w-max">
+                    <div className="items-center gap-1 num text-[9px] text-text-mute min-w-max hidden sm:flex">
                       <Clock size={9} aria-hidden />
                       {winner.Time.time}
                     </div>

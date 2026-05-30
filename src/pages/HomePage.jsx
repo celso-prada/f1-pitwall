@@ -17,6 +17,7 @@ import { Panel } from '../components/ui/Panel'
 import { Flag } from '../components/ui/Flag'
 import { Radio, Trophy, MapPin, Zap, Newspaper } from 'lucide-react'
 import { useDriverPhotos } from '../hooks/useDriverPhotos'
+import { Skeleton } from '../components/ui/Skeleton'
 
 function LiveEventBanner({ session }) {
   const navigate = useNavigate()
@@ -222,8 +223,8 @@ function LeaderCard({ standing, photos }) {
 
 export function HomePage() {
   const { data: races } = useQuery({ queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000 })
-  const { data: lastRace } = useQuery({ queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000 })
-  const { data: standings } = useQuery({ queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000 })
+  const { data: lastRace, isLoading: lastRaceLoading } = useQuery({ queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000 })
+  const { data: standings, isLoading: standingsLoading } = useQuery({ queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000 })
   const { data: session } = useQuery({ queryKey: ['latestSession'], queryFn: getLatestSession, staleTime: 60_000 })
 
   const photos = useDriverPhotos()
@@ -267,10 +268,16 @@ export function HomePage() {
         {/* Leader + Last race stacked in 1 col */}
         <div className="flex flex-col gap-4">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <LeaderCard standing={leader} photos={photos} />
+            {standingsLoading
+              ? <Skeleton height={88} rounded={12} />
+              : <LeaderCard standing={leader} photos={photos} />
+            }
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex-1">
-            <LastRacePodium race={lastRace} />
+            {lastRaceLoading
+              ? <Skeleton height={180} rounded={12} />
+              : <LastRacePodium race={lastRace} />
+            }
           </motion.div>
         </div>
       </div>

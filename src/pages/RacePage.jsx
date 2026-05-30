@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { getRaceResults, getQualifyingResults, getLapTimes } from '../api/jolpica'
 import { getTeamColor } from '../utils/teamColors'
+import { getCircuitImage } from '../utils/images'
 import { formatDate } from '../utils/format'
 import { RaceTable } from '../components/race/RaceTable'
 import { PositionChangeChart } from '../components/race/LapChart'
@@ -12,24 +13,25 @@ import { PageShell } from '../components/ui/PageShell'
 import { Skeleton } from '../components/ui/Skeleton'
 import { ArrowLeft, Trophy, BarChart2, List, MapPin, Clock } from 'lucide-react'
 
-function PodiumBlock({ race }) {
+function PodiumBlock({ race, winnerColor }) {
   if (!race?.Results) return null
   const top3    = race.Results.slice(0, 3)
   const medals  = ['🥇', '🥈', '🥉']
-  const heights = [110, 80, 65]
+  const heights = [100, 72, 58]
   const order   = [1, 0, 2]
 
   return (
-    <div className="flex items-end justify-center gap-3 py-6">
+    <div className="flex items-end justify-center gap-2 sm:gap-3 py-4 sm:py-6"
+      style={{ borderTop: `1px solid ${winnerColor ?? 'var(--color-border)'}18` }}>
       {order.map(idx => {
         const r = top3[idx]
         if (!r) return null
         const color = getTeamColor(r.Constructor.name)
         return (
-          <div key={idx} className="flex flex-col items-center gap-2 w-28">
-            <div className="text-2xl">{medals[idx]}</div>
-            <div className="num text-sm font-black text-text text-center">{r.Driver.code}</div>
-            <div className="text-[9px] text-center" style={{ color }}>{r.Constructor.name}</div>
+          <div key={idx} className="flex flex-col items-center gap-1.5 w-[30%] max-w-[7rem]">
+            <div className="text-xl sm:text-2xl">{medals[idx]}</div>
+            <div className="num text-xs sm:text-sm font-black text-text text-center">{r.Driver.code}</div>
+            <div className="text-[9px] text-center leading-tight" style={{ color }}>{r.Constructor.name}</div>
             <div
               className="w-full rounded-t-xl flex flex-col items-center justify-end pb-3 relative overflow-hidden"
               style={{
@@ -52,12 +54,12 @@ function QualifyingTable({ quali }) {
   const results = quali.QualifyingResults.slice(0, 10)
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
+    <div className="overflow-x-auto -mx-1">
+      <table className="w-full text-xs min-w-[340px]">
         <thead>
           <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
             {['P', 'Piloto', 'Equipe', 'Q1', 'Q2', 'Q3'].map(h => (
-              <th key={h} className="text-left py-1.5 px-2 section-title">{h}</th>
+              <th key={h} className="text-left py-1.5 px-2 section-title whitespace-nowrap">{h}</th>
             ))}
           </tr>
         </thead>
@@ -68,10 +70,10 @@ function QualifyingTable({ quali }) {
               <tr key={r.Driver.driverId} style={{ borderBottom: '1px solid var(--color-border-mute)' }}>
                 <td className="py-1.5 px-2 num font-bold text-text-mute">{r.position}</td>
                 <td className="py-1.5 px-2 num font-semibold text-text">{r.Driver.code}</td>
-                <td className="py-1.5 px-2" style={{ color: color + 'cc' }}>{r.Constructor.name}</td>
-                <td className="py-1.5 px-2 num text-text-mute">{r.Q1 || '—'}</td>
-                <td className="py-1.5 px-2 num text-text-mute">{r.Q2 || '—'}</td>
-                <td className="py-1.5 px-2 num text-text-dim">{r.Q3 || '—'}</td>
+                <td className="py-1.5 px-2 text-[10px]" style={{ color: color + 'cc' }}>{r.Constructor.name}</td>
+                <td className="py-1.5 px-2 num text-text-mute whitespace-nowrap">{r.Q1 || '—'}</td>
+                <td className="py-1.5 px-2 num text-text-mute whitespace-nowrap">{r.Q2 || '—'}</td>
+                <td className="py-1.5 px-2 num text-text-dim whitespace-nowrap">{r.Q3 || '—'}</td>
               </tr>
             )
           })}
@@ -106,7 +108,7 @@ export function RacePage() {
   if (raceLoading) {
     return (
       <PageShell>
-        <Skeleton height={200} rounded={16} />
+        <Skeleton height={260} rounded={16} />
         <Skeleton height={400} rounded={16} />
       </PageShell>
     )
@@ -120,9 +122,10 @@ export function RacePage() {
     )
   }
 
-  const circuit     = race.Circuit
-  const winner      = race.Results?.[0]
-  const winnerColor = winner ? getTeamColor(winner.Constructor.name) : 'var(--color-f1)'
+  const circuit        = race.Circuit
+  const winner         = race.Results?.[0]
+  const winnerColor    = winner ? getTeamColor(winner.Constructor.name) : 'var(--color-f1)'
+  const circuitImageUrl = getCircuitImage(circuit?.circuitId)
 
   return (
     <PageShell>
@@ -146,16 +149,40 @@ export function RacePage() {
       >
         <div className="absolute top-0 left-0 right-0 h-px"
           style={{ background: `linear-gradient(90deg, transparent, ${winnerColor}, transparent)` }} />
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-1">
+
+        {/* Circuit image + race info row */}
+        <div className="flex flex-col sm:flex-row">
+          {/* Circuit image */}
+          {circuitImageUrl && (
+            <div
+              className="w-full sm:w-52 md:w-60 flex-shrink-0 flex items-center justify-center"
+              style={{
+                background: 'var(--color-bg)',
+                borderBottom: '1px solid var(--color-border-mute)',
+                minHeight: 140,
+              }}
+            >
+              <img
+                src={circuitImageUrl}
+                alt={`${circuit?.circuitName} layout`}
+                className="max-h-36 w-full object-contain p-4 sm:p-5"
+                onError={e => { e.target.parentElement.style.display = 'none' }}
+              />
+            </div>
+          )}
+
+          {/* Race info */}
+          <div className="flex-1 p-4 sm:p-6 flex flex-col justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="num text-[9px] text-text-mute uppercase tracking-wider">
                   {season} · Round {round}
                 </span>
               </div>
-              <h1 className="font-display font-bold text-3xl text-text uppercase">{race.raceName}</h1>
-              <div className="flex items-center gap-4 mt-2 text-xs text-text-mute">
+              <h1 className="font-display font-bold text-2xl sm:text-3xl text-text uppercase leading-tight">
+                {race.raceName}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-text-mute">
                 <div className="flex items-center gap-1">
                   <MapPin size={11} aria-hidden />
                   {circuit?.Location?.locality}, {circuit?.Location?.country}
@@ -166,10 +193,11 @@ export function RacePage() {
                 </div>
               </div>
             </div>
+
             {winner && (
-              <div className="text-right">
+              <div>
                 <div className="text-[9px] text-text-mute mb-1">Vencedor</div>
-                <div className="font-display font-bold text-lg uppercase text-text">
+                <div className="font-display font-bold text-base sm:text-lg uppercase text-text leading-tight">
                   {winner.Driver.givenName[0]}. {winner.Driver.familyName}
                 </div>
                 <div className="text-xs" style={{ color: winnerColor }}>{winner.Constructor.name}</div>
@@ -179,19 +207,23 @@ export function RacePage() {
               </div>
             )}
           </div>
-          <PodiumBlock race={race} />
+        </div>
+
+        {/* Podium */}
+        <div className="px-3 sm:px-6 pb-2">
+          <PodiumBlock race={race} winnerColor={winnerColor} />
         </div>
       </motion.div>
 
       {/* Tab navigation */}
       <div
-        className="flex gap-1 p-1 rounded-xl w-full max-w-sm"
+        className="flex gap-1 p-1 rounded-xl w-full"
         style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border-strong)' }}
         role="tablist"
       >
         {[
-          { id: 'results',   label: 'Resultados', icon: List },
-          { id: 'positions', label: 'Posições',   icon: BarChart2 },
+          { id: 'results',    label: 'Resultados', icon: List },
+          { id: 'positions',  label: 'Posições',   icon: BarChart2 },
           { id: 'qualifying', label: 'Qualifying', icon: Trophy },
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -199,14 +231,14 @@ export function RacePage() {
             role="tab"
             aria-selected={view === id}
             onClick={() => setView(id)}
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all"
             style={{
               background: view === id ? 'var(--color-f1)' : 'transparent',
               color:      view === id ? 'white' : 'var(--color-text-mute)',
             }}
           >
             <Icon size={13} aria-hidden />
-            {label}
+            <span>{label}</span>
           </button>
         ))}
       </div>
