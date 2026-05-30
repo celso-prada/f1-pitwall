@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Header } from './components/ui/Header'
-import { ChatPanel } from './components/ai/ChatPanel'
 import { HomePage } from './pages/HomePage'
 import { LivePage } from './pages/LivePage'
 import { StandingsPage } from './pages/StandingsPage'
@@ -38,7 +37,6 @@ export default function App() {
               <Route path="/race/:season/:round" element={<RacePage />} />
             </Routes>
           </main>
-          <ChatPanel />
         </div>
       </BrowserRouter>
     </QueryClientProvider>

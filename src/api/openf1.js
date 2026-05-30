@@ -77,6 +77,15 @@ export function buildLatestLaps(laps) {
   return latest
 }
 
+export async function getDriverPhotoMap() {
+  const drivers = await getSessionDrivers('latest')
+  const map = {}
+  for (const d of drivers) {
+    if (d.name_acronym && d.headshot_url) map[d.name_acronym] = d.headshot_url
+  }
+  return map
+}
+
 // Builds the current race order from position snapshots
 export function buildCurrentOrder(positions) {
   const latest = {}

@@ -16,6 +16,7 @@ import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
 import { Flag } from '../components/ui/Flag'
 import { Radio, Trophy, MapPin, Zap, Newspaper } from 'lucide-react'
+import { useDriverPhotos } from '../hooks/useDriverPhotos'
 
 function LiveEventBanner({ session }) {
   const navigate = useNavigate()
@@ -110,7 +111,7 @@ function HeroCountdown({ raceDateTime, raceName, raceLocation }) {
   )
 }
 
-function LastRacePodium({ race }) {
+function LastRacePodium({ race, photos }) {
   const navigate = useNavigate()
   if (!race) return null
   const top3 = race.Results?.slice(0, 3) ?? []
@@ -126,6 +127,7 @@ function LastRacePodium({ race }) {
           if (!r) return null
           const color = getTeamColor(r.Constructor.name)
           const natCode = DRIVER_NAT_CODE[r.Driver.nationality]
+          const photo = photos[r.Driver.code]
           return (
             <div
               key={idx}
@@ -134,18 +136,27 @@ function LastRacePodium({ race }) {
             >
               <div className="text-xl">{medals[idx]}</div>
               <div
-                className="w-full rounded-t-lg flex flex-col items-center justify-center p-2 relative overflow-hidden transition-opacity group-hover:opacity-80"
+                className="w-full rounded-t-lg flex flex-col items-center justify-end p-2 relative overflow-hidden transition-opacity group-hover:opacity-85"
                 style={{
                   height: heights[displayIdx],
-                  background: `linear-gradient(to top, ${color}28, ${color}08)`,
+                  background: `linear-gradient(to top, ${color}38, ${color}08)`,
                   border: `1px solid ${color}35`,
                 }}
               >
-                <Flag code={natCode} size={14} />
-                <span className="text-xs font-black text-text mt-1">{r.Driver.code}</span>
-                <span className="text-[9px] mt-0.5 truncate w-full text-center" style={{ color }}>
-                  {r.Constructor.name}
-                </span>
+                {photo && (
+                  <img
+                    src={photo}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-0 w-full h-full object-cover object-top opacity-60"
+                    style={{ maskImage: 'linear-gradient(to bottom, transparent 10%, rgba(0,0,0,0.7) 100%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 10%, rgba(0,0,0,0.7) 100%)' }}
+                    onError={e => { e.target.style.display = 'none' }}
+                  />
+                )}
+                <div className="relative z-10 flex flex-col items-center">
+                  {!photo && <Flag code={natCode} size={14} />}
+                  <span className="text-xs font-black text-white drop-shadow mt-0.5">{r.Driver.code}</span>
+                </div>
               </div>
             </div>
           )
@@ -155,33 +166,49 @@ function LastRacePodium({ race }) {
   )
 }
 
-function LeaderCard({ standing }) {
+function LeaderCard({ standing, photos }) {
   const navigate = useNavigate()
   if (!standing) return null
   const color = getTeamColor(standing.Constructors?.[0]?.name)
   const natCode = DRIVER_NAT_CODE[standing.Driver.nationality]
+  const photo = photos[standing.Driver.code]
 
   return (
     <div
-      className="card p-4 relative overflow-hidden cursor-pointer hover:border-opacity-50 transition-all flex items-center justify-center"
-      style={{ border: `1px solid ${color}30` }}
+      className="card relative overflow-hidden cursor-pointer hover:border-opacity-50 transition-all flex items-center"
+      style={{ border: `1px solid ${color}30`, minHeight: 88 }}
       onClick={() => navigate(`/driver/${standing.Driver.driverId}`)}
     >
       <div className="absolute inset-0 opacity-[0.04]"
         style={{ background: `radial-gradient(ellipse at top right, ${color}, transparent)` }} />
-      <div className="flex flex-col items-center justify-center text-center gap-1">
+
+      {/* Driver photo on the right */}
+      {photo && (
+        <div className="absolute right-0 top-0 bottom-0 w-24 overflow-hidden">
+          <img
+            src={photo}
+            alt=""
+            aria-hidden
+            className="w-full h-full object-cover object-top"
+            style={{ maskImage: 'linear-gradient(to left, rgba(0,0,0,0.5), transparent)', WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.5), transparent)' }}
+            onError={e => { e.target.style.display = 'none' }}
+          />
+        </div>
+      )}
+
+      <div className="relative z-10 flex flex-col gap-1 p-4">
         <div className="text-[9px] text-text-mute uppercase tracking-wider">Líder do Campeonato</div>
-        <div className="flex items-center gap-2 mt-1">
-          <Flag code={natCode} size={16} />
-          <div className="font-display font-bold text-xl text-text uppercase">
-            {standing.Driver.givenName} <span style={{ color }}>{standing.Driver.familyName}</span>
+        <div className="flex items-center gap-2 mt-0.5">
+          <Flag code={natCode} size={14} />
+          <div className="font-display font-bold text-lg text-text uppercase leading-tight">
+            {standing.Driver.givenName.slice(0, 1)}. <span style={{ color }}>{standing.Driver.familyName}</span>
           </div>
         </div>
-        <div className="text-xs text-text-mute">{standing.Constructors?.[0]?.name}</div>
-        <div className="flex items-baseline gap-2 mt-2">
-          <span className="num text-3xl font-bold text-text">{standing.points}</span>
-          <span className="text-text-mute text-sm">pts</span>
-          <span className="num text-yellow-500 font-bold">{standing.wins}W</span>
+        <div className="text-[10px] text-text-mute">{standing.Constructors?.[0]?.name}</div>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="num text-2xl font-bold text-text">{standing.points}</span>
+          <span className="text-text-mute text-xs">pts</span>
+          <span className="num text-yellow-500 text-sm font-bold">{standing.wins}W</span>
         </div>
       </div>
     </div>
@@ -194,6 +221,7 @@ export function HomePage() {
   const { data: standings } = useQuery({ queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000 })
   const { data: session } = useQuery({ queryKey: ['latestSession'], queryFn: getLatestSession, staleTime: 60_000 })
 
+  const photos = useDriverPhotos()
   const nextRace = getNextRace(races ?? [])
   const raceDateTime = nextRace ? `${nextRace.date}T${nextRace.time ?? '00:00:00'}` : null
   const leader = standings?.[0]
@@ -234,10 +262,10 @@ export function HomePage() {
         {/* Leader + Last race stacked in 1 col */}
         <div className="flex flex-col gap-4">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <LeaderCard standing={leader} />
+            <LeaderCard standing={leader} photos={photos} />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex-1">
-            <LastRacePodium race={lastRace} />
+            <LastRacePodium race={lastRace} photos={photos} />
           </motion.div>
         </div>
       </div>

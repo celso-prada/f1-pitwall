@@ -5,8 +5,8 @@ import {
   getDriverSeasonStats, getDriverResults, getDriverCareerStats, getDriverSeasonHistory
 } from '../api/jolpica'
 import { getTeamColor } from '../utils/teamColors'
-import { DRIVER_PLACEHOLDER } from '../utils/images'
 import { DRIVER_NAT_CODE } from '../utils/flags'
+import { useDriverPhotos } from '../hooks/useDriverPhotos'
 import { formatDate } from '../utils/format'
 import { Skeleton } from '../components/ui/Skeleton'
 import { Flag } from '../components/ui/Flag'
@@ -217,10 +217,12 @@ export function DriverPage() {
     staleTime: 3_600_000,
   })
 
+  const photos      = useDriverPhotos()
   const driver      = standing?.Driver
   const constructor = standing?.Constructors?.[0]
   const color       = getTeamColor(constructor?.name)
   const natCode     = DRIVER_NAT_CODE[driver?.nationality]
+  const photo       = driver?.code ? photos[driver.code] : null
 
   if (standLoading) {
     return (
@@ -263,13 +265,20 @@ export function DriverPage() {
       >
         <div className="absolute inset-0 opacity-[0.06]"
           style={{ background: `radial-gradient(ellipse at top right, ${color}, transparent 60%)` }} />
-        <div className="absolute right-0 top-0 bottom-0 w-48 opacity-[0.15]"
-          style={{
-            backgroundImage: `url(${DRIVER_PLACEHOLDER})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'top center',
-            maskImage: 'linear-gradient(to left, rgba(0,0,0,0.8), transparent)',
-          }} />
+
+        {/* Driver photo — fades out to the left */}
+        {photo && (
+          <div className="absolute right-0 top-0 bottom-0 w-56 overflow-hidden">
+            <img
+              src={photo}
+              alt=""
+              aria-hidden
+              className="w-full h-full object-cover object-top"
+              style={{ maskImage: 'linear-gradient(to left, rgba(0,0,0,0.55) 40%, transparent)', WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.55) 40%, transparent)' }}
+              onError={e => { e.target.style.display = 'none' }}
+            />
+          </div>
+        )}
 
         <div className="relative flex items-center gap-6">
           {/* Number badge */}
