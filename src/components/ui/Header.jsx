@@ -122,7 +122,7 @@ export function Header() {
             <div className="w-px h-5 hidden md:block" style={{ background: 'var(--color-border-strong)' }} />
 
             {/* Nav — desktop only (mobile uses bottom bar) */}
-            <nav className="hidden md:flex items-center gap-0.5" role="navigation" aria-label="Navegação principal">
+            <nav className="hidden md:flex items-center gap-1" role="navigation" aria-label="Navegação principal">
               {NAV.map(({ path, label, icon: Icon }) => {
                 const active = isActive(path)
                 return (
@@ -130,14 +130,22 @@ export function Header() {
                     key={path}
                     onClick={() => navigate(path)}
                     aria-current={active ? 'page' : undefined}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+                    className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                      active ? '' : 'hover:bg-[#141414]'
+                    }`}
                     style={{
-                      color: active ? '#fff' : 'var(--color-text-mute)',
-                      background: active ? 'var(--color-f1)' : 'transparent',
+                      color: active ? 'var(--color-f1)' : 'var(--color-text-dim)',
+                      background: active ? 'rgba(225,6,0,0.08)' : 'transparent',
                     }}
                   >
-                    <Icon size={13} aria-hidden />
-                    <span className="hidden lg:block">{label}</span>
+                    <Icon size={15} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
+                    <span>{label}</span>
+                    {active && (
+                      <span
+                        className="absolute bottom-0 left-3 right-3 h-px rounded-full"
+                        style={{ background: 'var(--color-f1)', opacity: 0.7 }}
+                      />
+                    )}
                   </button>
                 )
               })}
@@ -155,7 +163,7 @@ export function Header() {
       {/* ── Bottom navigation bar — mobile only ── */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t"
-        style={{ background: 'rgba(10,10,10,0.97)', borderColor: 'var(--color-border)', backdropFilter: 'blur(12px)', height: 64 }}
+        style={{ background: 'rgba(8,8,8,0.98)', borderColor: 'var(--color-border)', backdropFilter: 'blur(20px)', height: 64 }}
         role="navigation"
         aria-label="Navegação principal"
       >
@@ -166,16 +174,38 @@ export function Header() {
               key={path}
               onClick={() => navigate(path)}
               aria-current={active ? 'page' : undefined}
-              className="flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all active:scale-95"
+              className="relative flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all duration-200 active:scale-95"
               style={{ color: active ? 'var(--color-f1)' : 'var(--color-text-mute)' }}
             >
+              {/* Top accent line */}
+              <span
+                className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full transition-all duration-300"
+                style={{
+                  width: active ? 28 : 0,
+                  height: 2,
+                  background: 'var(--color-f1)',
+                  opacity: active ? 1 : 0,
+                }}
+              />
+
+              {/* Icon with pill background */}
               <div
-                className="flex items-center justify-center w-10 h-7 rounded-xl transition-all"
-                style={{ background: active ? 'rgba(225,6,0,0.15)' : 'transparent' }}
+                className="flex items-center justify-center rounded-xl transition-all duration-200"
+                style={{
+                  width: 40,
+                  height: 28,
+                  background: active ? 'rgba(225,6,0,0.12)' : 'transparent',
+                }}
               >
-                <Icon size={active ? 20 : 18} aria-hidden />
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
               </div>
-              <span className="text-[10px] font-semibold leading-none">{label}</span>
+
+              <span
+                className="text-[10px] font-semibold leading-none tracking-wide transition-all duration-200"
+                style={{ opacity: active ? 1 : 0.55 }}
+              >
+                {label}
+              </span>
             </button>
           )
         })}
