@@ -119,8 +119,23 @@ function LastRacePodium({ race }) {
   const order = [1, 0, 2]
   const heights = [68, 90, 52]
 
+  const gpName = race.raceName?.replace(' Grand Prix', ' GP') ?? ''
+  const raceDate = race.date
+    ? new Date(race.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+    : null
+
   return (
-    <Panel title={`Pódio · ${race.raceName?.replace(' Grand Prix', ' GP')}`} icon={<Trophy size={13} aria-hidden />}>
+    <Panel
+      title="Pódio"
+      icon={<Trophy size={13} aria-hidden />}
+      right={<span className="text-[9px] uppercase tracking-wide" style={{ color: 'var(--color-text-mute)' }}>Última Corrida</span>}
+    >
+      {/* GP name + date subtitle */}
+      <div className="flex items-baseline justify-between mb-1 -mt-1">
+        <span className="text-xs font-bold text-text">{gpName}</span>
+        {raceDate && <span className="num text-[10px] text-text-mute">{raceDate}</span>}
+      </div>
+
       <div className="flex items-end justify-center gap-2 pt-3">
         {order.map((idx, displayIdx) => {
           const r = top3[idx]
