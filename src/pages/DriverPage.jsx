@@ -1,13 +1,14 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   getDriverSeasonStats, getDriverResults, getDriverCareerStats,
-  getDriverSeasonHistory, getDriverInfo,
+  getDriverSeasonHistory, getDriverInfo, getDriverWins,
 } from '../api/jolpica'
 import { getWikipediaDriverData } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
-import { DRIVER_NAT_CODE } from '../utils/flags'
+import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY } from '../utils/flags'
 import { useDriverPhotos } from '../hooks/useDriverPhotos'
 import { formatDate } from '../utils/format'
 import { Skeleton } from '../components/ui/Skeleton'
@@ -15,10 +16,10 @@ import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
-import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar, ExternalLink, BookOpen } from 'lucide-react'
+import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar, ExternalLink, BookOpen, Clock, ZoomIn } from 'lucide-react'
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  BarChart, Bar, Cell,
+  BarChart, Bar, Cell, LineChart, Line,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 
 function SeasonChart({ history }) {
@@ -194,12 +195,99 @@ function RecentResults({ results, season }) {
   )
 }
 
+function WinsHistory({ wins, navigate }) {
+  if (!wins?.length) return null
+  const sorted = [...wins].sort((a, b) => parseInt(b.season) - parseInt(a.season))
+
+  return (
+    <Panel title={`Vitórias · ${wins.length}`} icon={<Trophy size={13} aria-hidden />}>
+      <div className="overflow-y-auto mt-2" style={{ maxHeight: 480 }}>
+        {sorted.map((race, i) => {
+          const result  = race.Results?.[0]
+          const circuitCode = CIRCUIT_COUNTRY[race.Circuit?.circuitId]
+          const teamColor   = getTeamColor(result?.Constructor?.name)
+          return (
+            <motion.div
+              key={`${race.season}-${race.round}`}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: Math.min(i * 0.015, 0.5) }}
+              className="flex items-center gap-3 py-1.5 px-3 rounded-lg cursor-pointer transition-colors hover:bg-[var(--color-surface-2)]"
+              style={{ borderBottom: '1px solid var(--color-border-mute)' }}
+              onClick={() => navigate(`/circuit/${race.Circuit?.circuitId}`)}
+            >
+              <div className="num font-black text-sm w-10 flex-shrink-0"
+                style={{ color: i === 0 ? 'var(--color-gold)' : 'var(--color-text-mute)' }}>
+                {race.season}
+              </div>
+              {circuitCode
+                ? <Flag code={circuitCode} size={13} />
+                : <span className="w-[18px]" />
+              }
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-bold text-text">
+                  {race.raceName?.replace(' Grand Prix', ' GP')}
+                </span>
+              </div>
+              <div className="text-[10px] text-right flex-shrink-0 hidden sm:block" style={{ color: teamColor }}>
+                {result?.Constructor?.name}
+              </div>
+              {result?.Time?.time && (
+                <div className="flex items-center gap-1 num text-[9px] text-text-mute min-w-max">
+                  <Clock size={9} aria-hidden />
+                  {result.Time.time}
+                </div>
+              )}
+            </motion.div>
+          )
+        })}
+      </div>
+    </Panel>
+  )
+}
+
+function PhotoLightbox({ src, name, onClose }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.94)' }}
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 left-4 flex items-center gap-2 text-sm transition-colors"
+        style={{ color: 'rgba(255,255,255,0.6)' }}
+        onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+        onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
+      >
+        <ArrowLeft size={16} /> Voltar ao perfil
+      </button>
+      <motion.img
+        src={src}
+        alt={name}
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="rounded-2xl shadow-2xl"
+        style={{ maxHeight: '85vh', maxWidth: '90vw', objectFit: 'contain' }}
+        onClick={e => e.stopPropagation()}
+      />
+      {name && (
+        <p className="mt-4 text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>{name}</p>
+      )}
+    </motion.div>
+  )
+}
+
 export function DriverPage() {
   const { driverId } = useParams()
   const navigate = useNavigate()
   const photos = useDriverPhotos()
+  const [photoOpen, setPhotoOpen] = useState(false)
 
-  // 1. Try current season (fast for active drivers)
   const { data: currentStanding, isLoading: standLoading } = useQuery({
     queryKey: ['driverSeason', driverId],
     queryFn: () => getDriverSeasonStats(driverId),
@@ -207,7 +295,6 @@ export function DriverPage() {
     retry: false,
   })
 
-  // 2. Career stats (all-time, works for any driver)
   const { data: career } = useQuery({
     queryKey: ['driverCareer', driverId],
     queryFn: () => getDriverCareerStats(driverId),
@@ -215,7 +302,6 @@ export function DriverPage() {
     staleTime: 3_600_000,
   })
 
-  // 3. Season history (all-time, works for any driver)
   const { data: history, isLoading: histLoading } = useQuery({
     queryKey: ['driverHistory', driverId],
     queryFn: () => getDriverSeasonHistory(driverId),
@@ -223,7 +309,6 @@ export function DriverPage() {
     staleTime: 3_600_000,
   })
 
-  // 4. Driver basic info (fallback for retired drivers missing from standings)
   const { data: driverInfo, isLoading: infoLoading } = useQuery({
     queryKey: ['driverInfo', driverId],
     queryFn: () => getDriverInfo(driverId),
@@ -232,14 +317,19 @@ export function DriverPage() {
     retry: false,
   })
 
-  // Derive: most recent season from history (for retired drivers)
-  const sortedHistory = [...(history ?? [])].sort((a, b) => b.season - a.season)
-  const recentEntry   = sortedHistory[0]
+  const sortedHistory  = [...(history ?? [])].sort((a, b) => b.season - a.season)
+  const recentEntry    = sortedHistory[0]
   const recentStanding = recentEntry?.DriverStandings?.[0] ?? null
   const displaySeason  = currentStanding ? 'current' : (recentEntry?.season ?? null)
   const isActive       = !!currentStanding
 
-  // 5. Season results for the relevant season
+  // Championship seasons (position === '1' in any season standing)
+  const championships = sortedHistory
+    .filter(s => s.DriverStandings?.[0]?.position === '1')
+    .map(s => s.season)
+    .sort((a, b) => parseInt(b) - parseInt(a))
+  const champCount = championships.length
+
   const { data: results, isLoading: resLoading } = useQuery({
     queryKey: ['driverResults', driverId, displaySeason],
     queryFn: () => getDriverResults(driverId, displaySeason),
@@ -247,7 +337,14 @@ export function DriverPage() {
     staleTime: 300_000,
   })
 
-  // Compose final data from active standing → history standing → basic info
+  // Race wins list (all-time) — only for retired drivers
+  const { data: allWins } = useQuery({
+    queryKey: ['driverWins', driverId],
+    queryFn: () => getDriverWins(driverId),
+    enabled: !!driverId && !isActive && !standLoading,
+    staleTime: 86_400_000,
+  })
+
   const standing    = currentStanding ?? recentStanding
   const driver      = standing?.Driver ?? driverInfo
   const constructor = standing?.Constructors?.[0]
@@ -255,7 +352,6 @@ export function DriverPage() {
   const natCode     = DRIVER_NAT_CODE[driver?.nationality]
   const openf1Photo = driver?.code ? photos[driver.code] : null
 
-  // Wikipedia fallback: fetch photo + PT-BR bio when no OpenF1 photo
   const { data: wikiData } = useQuery({
     queryKey: ['wikiDriver', driverId],
     queryFn: () => getWikipediaDriverData(driver?.url),
@@ -264,9 +360,9 @@ export function DriverPage() {
   })
 
   const photo      = openf1Photo ?? wikiData?.photo ?? null
+  const photoHD    = openf1Photo ?? wikiData?.photoOriginal ?? wikiData?.photo ?? null
   const wikiExtract = wikiData?.extract ?? null
 
-  // Loading: block until we have at least one data source resolved
   const pageLoading = standLoading || (!currentStanding && (histLoading || infoLoading))
 
   if (pageLoading) {
@@ -293,6 +389,16 @@ export function DriverPage() {
 
   return (
     <PageShell>
+      <AnimatePresence>
+        {photoOpen && photoHD && (
+          <PhotoLightbox
+            src={photoHD}
+            name={`${driver.givenName} ${driver.familyName}`}
+            onClose={() => setPhotoOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       <button
         onClick={() => navigate(-1)}
         aria-label="Voltar"
@@ -301,7 +407,7 @@ export function DriverPage() {
         <ArrowLeft size={16} aria-hidden /> Voltar
       </button>
 
-      {/* Hero card */}
+      {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -314,95 +420,142 @@ export function DriverPage() {
         <div className="absolute inset-0 opacity-[0.06]"
           style={{ background: `radial-gradient(ellipse at top right, ${color}, transparent 60%)` }} />
 
-        {photo && (
-          <div className="absolute right-0 top-0 bottom-0 w-64 overflow-hidden">
-            <img
-              src={photo}
-              alt=""
-              aria-hidden
-              className="w-full h-full object-cover"
-              style={{
-                objectPosition: '50% 25%',
-                maskImage: 'linear-gradient(to left, rgba(0,0,0,0.6) 40%, transparent)',
-                WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.6) 40%, transparent)',
-              }}
-              onError={e => { e.target.style.display = 'none' }}
-            />
-          </div>
-        )}
+        <div className="relative flex items-start gap-5">
+          {/* Left: info */}
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            {/* Number badge — only when driver has a permanent number */}
+            {driver.permanentNumber && (
+              <div
+                className="flex-shrink-0 w-20 h-20 rounded-2xl flex items-center justify-center num text-3xl font-bold"
+                style={{ background: color + '20', border: `2px solid ${color}50`, color }}
+              >
+                {driver.permanentNumber}
+              </div>
+            )}
 
-        <div className="relative flex items-center gap-6">
-          {/* Number badge */}
-          <div
-            className="flex-shrink-0 w-20 h-20 rounded-2xl flex items-center justify-center num text-3xl font-bold"
-            style={{ background: color + '20', border: `2px solid ${color}50`, color }}
-          >
-            {driver.permanentNumber ?? '?'}
-          </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <Flag code={natCode} size={18} />
+                <span className="text-[10px] text-text-mute uppercase tracking-wider">{driver.nationality}</span>
+                {driver.dateOfBirth && (
+                  <span className="text-[10px] text-text-mute">
+                    · {new Date(driver.dateOfBirth).toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+              </div>
 
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Flag code={natCode} size={18} />
-              <span className="text-[10px] text-text-mute uppercase tracking-wider">{driver.nationality}</span>
-              {driver.dateOfBirth && (
-                <span className="text-[10px] text-text-mute">
-                  · {new Date(driver.dateOfBirth).toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric' })}
-                </span>
+              <h1 className="font-display font-bold text-3xl text-text uppercase leading-tight">
+                {driver.givenName} <span style={{ color }}>{driver.familyName}</span>
+              </h1>
+
+              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                {constructor?.name && (
+                  <span className="text-sm" style={{ color: color + 'cc' }}>{constructor.name}</span>
+                )}
+                {career?.seasons?.length > 0 && (
+                  <span className="num text-xs text-text-mute">{career.seasons.length} temporadas</span>
+                )}
+                {driver.url && (
+                  <a href={driver.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[10px] text-text-mute hover:text-text transition-colors">
+                    <ExternalLink size={10} aria-hidden /> Wikipedia
+                  </a>
+                )}
+              </div>
+
+              {/* Championship badge */}
+              {champCount > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-1.5">
+                    <Star size={14} fill="var(--color-gold)" style={{ color: 'var(--color-gold)' }} aria-hidden />
+                    <span className="font-display font-bold text-base leading-none" style={{ color: 'var(--color-gold)' }}>
+                      {champCount}× Campeão Mundial
+                    </span>
+                  </div>
+                  <div className="num text-[10px] mt-1" style={{ color: 'var(--color-text-mute)', opacity: 0.7 }}>
+                    {championships.join(', ')}
+                  </div>
+                </div>
               )}
             </div>
-            <h1 className="font-display font-bold text-3xl text-text uppercase leading-tight">
-              {driver.givenName} <span style={{ color }}>{driver.familyName}</span>
-            </h1>
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              {constructor?.name && (
-                <span className="text-sm" style={{ color: color + 'cc' }}>{constructor.name}</span>
-              )}
-              {career?.seasons?.length > 0 && (
-                <span className="num text-xs text-text-mute">{career.seasons.length} temporadas</span>
-              )}
-              {driver.url && (
-                <a href={driver.url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[10px] text-text-mute hover:text-text transition-colors">
-                  <ExternalLink size={10} aria-hidden /> Wikipedia
-                </a>
-              )}
-            </div>
           </div>
 
-          {standing && (
+          {/* Right: photo (full, clickable) */}
+          {photo && (
+            <button
+              onClick={() => setPhotoOpen(true)}
+              className="flex-shrink-0 relative group rounded-xl overflow-hidden"
+              style={{ width: 110, height: 144 }}
+              aria-label="Ver foto em tamanho completo"
+            >
+              <img
+                src={photo}
+                alt=""
+                aria-hidden
+                className="w-full h-full object-contain"
+                style={{ background: 'transparent' }}
+                onError={e => { e.target.parentElement.style.display = 'none' }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
+                style={{ background: 'rgba(0,0,0,0.45)' }}>
+                <ZoomIn size={22} className="text-white" />
+              </div>
+            </button>
+          )}
+
+          {/* Season position (active only) */}
+          {isActive && standing && (
             <div className="text-right hidden sm:block flex-shrink-0">
               <div className="font-display font-bold text-5xl uppercase" style={{ color }}>
                 P{standing.position}
               </div>
-              <div className="text-[9px] text-text-mute mt-1 uppercase tracking-wide">
-                {isActive ? 'Campeonato' : `Temp. ${displaySeason}`}
-              </div>
+              <div className="text-[9px] text-text-mute mt-1 uppercase tracking-wide">Campeonato</div>
             </div>
           )}
         </div>
       </motion.div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label={isActive ? 'Pontos atual' : `Pontos ${displaySeason}`} value={standing?.points} icon={<Star size={13} />} color="var(--color-gold)" />
-        <Stat label={isActive ? 'Vitórias atual' : `Vitórias ${displaySeason}`} value={standing?.wins} icon={<Trophy size={13} />} color={color} />
-        <Stat label="Vitórias carreira" value={career?.wins} icon={<Trophy size={13} />} color="var(--color-f1)" />
-        <Stat label="Poles carreira" value={career?.poles} icon={<FlagIcon size={13} />} color="#a78bfa" />
-      </div>
-
-      {/* Charts + history */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="space-y-4">
-          {history && <SeasonChart history={history} />}
-          {!resLoading && <PositionChart results={results} color={color} season={displaySeason} />}
+      {isActive ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat label="Pontos atual"     value={standing?.points} icon={<Star size={13} />}     color="var(--color-gold)" />
+          <Stat label="Vitórias atual"   value={standing?.wins}   icon={<Trophy size={13} />}   color={color} />
+          <Stat label="Vitórias carreira" value={career?.wins}    icon={<Trophy size={13} />}   color="var(--color-f1)" />
+          <Stat label="Poles carreira"   value={career?.poles}    icon={<FlagIcon size={13} />} color="#a78bfa" />
         </div>
-        <div className="space-y-4">
-          {history && <SeasonHistoryTable history={history} navigate={navigate} />}
-          {!resLoading && <RecentResults results={results} season={displaySeason} />}
+      ) : (
+        <div className={`grid gap-3 ${champCount > 0 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-2'}`}>
+          <Stat label="Vitórias carreira" value={career?.wins}           icon={<Trophy size={13} />}   color="var(--color-gold)" />
+          <Stat label="Poles carreira"    value={career?.poles}          icon={<FlagIcon size={13} />} color="#a78bfa" />
+          <Stat label="Temporadas"        value={career?.seasons?.length} icon={<Calendar size={13} />} color="var(--color-f1)" />
         </div>
-      </div>
+      )}
 
-      {/* Wikipedia bio — PT-BR, shown for historical drivers without API bio */}
+      {/* Main content */}
+      {isActive ? (
+        // Active driver: charts + history
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            {history && <SeasonChart history={history} />}
+            {!resLoading && <PositionChart results={results} color={color} season={displaySeason} />}
+          </div>
+          <div className="space-y-4">
+            {history && <SeasonHistoryTable history={history} navigate={navigate} />}
+            {!resLoading && <RecentResults results={results} season={displaySeason} />}
+          </div>
+        </div>
+      ) : (
+        // Retired driver: wins list + season history side by side
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <WinsHistory wins={allWins} navigate={navigate} />
+            <SeasonHistoryTable history={history} navigate={navigate} />
+          </div>
+          {history && history.length >= 2 && <SeasonChart history={history} />}
+        </>
+      )}
+
+      {/* Wikipedia bio */}
       {wikiExtract && (
         <Panel title="Biografia" icon={<BookOpen size={13} aria-hidden />}>
           <div className="mt-2 space-y-2">

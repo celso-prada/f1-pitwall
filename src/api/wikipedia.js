@@ -20,6 +20,7 @@ export async function getWikipediaDriverData(wikiUrl) {
       ? await enRes.value.json() : null
 
     const photo = enData?.thumbnail?.source ?? null
+    const photoOriginal = enData?.originalimage?.source ?? null
     let extract = null
 
     // Try PT-BR Wikipedia for bio text
@@ -42,7 +43,7 @@ export async function getWikipediaDriverData(wikiUrl) {
     if (!extract) extract = enData?.extract ?? null
 
     if (!photo && !extract) return null
-    return { photo, extract }
+    return { photo, photoOriginal, extract }
   } catch {
     return null
   }

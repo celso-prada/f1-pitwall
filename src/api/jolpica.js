@@ -60,6 +60,19 @@ export async function getCircuitResults(circuitId) {
   return [...races, ...pages.flatMap(p => p.MRData.RaceTable.Races ?? [])]
 }
 
+export async function getDriverWins(driverId) {
+  const first = await get(`/drivers/${driverId}/results/1.json?limit=100`)
+  const races = first.MRData.RaceTable.Races ?? []
+  const total = parseInt(first.MRData.total)
+  if (total <= 100) return races
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil((total - 100) / 100) }, (_, i) =>
+      get(`/drivers/${driverId}/results/1.json?limit=100&offset=${(i + 1) * 100}`)
+    )
+  )
+  return [...races, ...pages.flatMap(p => p.MRData.RaceTable.Races ?? [])]
+}
+
 export async function getDriverCareerStats(driverId) {
   const [wins, poles, seasons] = await Promise.all([
     get(`/drivers/${driverId}/results/1.json?limit=1`),
