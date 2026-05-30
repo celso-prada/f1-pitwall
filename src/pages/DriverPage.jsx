@@ -325,7 +325,7 @@ export function DriverPage() {
 
   // Championship seasons (position === '1' in any season standing)
   const championships = sortedHistory
-    .filter(s => s.DriverStandings?.[0]?.position === '1')
+    .filter(s => parseInt(s.DriverStandings?.[0]?.position) === 1)
     .map(s => s.season)
     .sort((a, b) => parseInt(b) - parseInt(a))
   const champCount = championships.length
@@ -420,9 +420,9 @@ export function DriverPage() {
         <div className="absolute inset-0 opacity-[0.06]"
           style={{ background: `radial-gradient(ellipse at top right, ${color}, transparent 60%)` }} />
 
-        <div className="relative flex items-start gap-5">
+        <div className="relative flex items-center gap-5">
           {/* Left: info */}
-          <div className="flex items-start gap-4 flex-1 min-w-0">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
             {/* Number badge — only when driver has a permanent number */}
             {driver.permanentNumber && (
               <div

@@ -76,7 +76,7 @@ export async function getDriverWins(driverId) {
 export async function getDriverCareerStats(driverId) {
   const [wins, poles, seasons] = await Promise.all([
     get(`/drivers/${driverId}/results/1.json?limit=1`),
-    get(`/drivers/${driverId}/qualifying/1.json?limit=1`),
+    get(`/drivers/${driverId}/grid/1.json?limit=1`),
     get(`/drivers/${driverId}/seasons.json?limit=100`),
   ])
   return {
