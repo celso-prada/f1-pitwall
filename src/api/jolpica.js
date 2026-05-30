@@ -87,15 +87,20 @@ export async function getDriverAllResults(driverId) {
 }
 
 export async function getDriverCareerStats(driverId) {
-  const [wins, poles, seasons] = await Promise.all([
+  const [wins, poles, seasons] = await Promise.allSettled([
     get(`/drivers/${driverId}/results/1.json?limit=1`),
     get(`/drivers/${driverId}/grid/1.json?limit=1`),
     get(`/drivers/${driverId}/seasons.json?limit=100`),
   ])
+  const safeInt = r => {
+    if (r.status !== 'fulfilled') return null
+    const n = parseInt(r.value.MRData.total, 10)
+    return isNaN(n) ? null : n
+  }
   return {
-    wins: parseInt(wins.MRData.total),
-    poles: parseInt(poles.MRData.total),
-    seasons: seasons.MRData.SeasonTable.Seasons ?? [],
+    wins:    safeInt(wins),
+    poles:   safeInt(poles),
+    seasons: seasons.status === 'fulfilled' ? (seasons.value.MRData.SeasonTable.Seasons ?? []) : [],
   }
 }
 

@@ -59,7 +59,7 @@ export async function getWikipediaDriverStats(wikiUrl) {
   try {
     const res = await fetch(
       `${EN_LANGLINKS}?action=query&titles=${encodeURIComponent(enTitle)}&prop=revisions&rvprop=content&rvsection=0&format=json&origin=*`,
-      { signal: AbortSignal.timeout(8000) }
+      { signal: AbortSignal.timeout(10000) }
     )
     if (!res.ok) return null
     const data = await res.json()
@@ -68,13 +68,25 @@ export async function getWikipediaDriverStats(wikiUrl) {
     const wikitext = rev?.slots?.main?.['*'] ?? rev?.['*'] ?? ''
     if (!wikitext) return null
 
-    // Extract a plain integer from an infobox field line (handles commas like 1,566)
+    // Extract integer from an infobox field.
+    // Handles: |key = 103  |key=103  |key = {{tpl}} 103  |key = 1,234
     const num = (key) => {
-      const m = wikitext.match(new RegExp(`\\|\\s*${key}\\s*=\\s*([\\d,]+)`))
-      return m ? parseInt(m[1].replace(/,/g, ''), 10) : null
+      // Exact match — most common case
+      let m = wikitext.match(new RegExp(`\\|\\s*${key}\\s*=\\s*([\\d,]+)`))
+      if (m) {
+        const n = parseInt(m[1].replace(/,/g, ''), 10)
+        if (!isNaN(n)) return n
+      }
+      // Fallback — skip over templates/markup then grab first number on the field line
+      m = wikitext.match(new RegExp(`\\|\\s*${key}\\s*=[^|\\n]*?\\b([\\d,]+)\\b`))
+      if (m) {
+        const n = parseInt(m[1].replace(/,/g, ''), 10)
+        if (!isNaN(n)) return n
+      }
+      return null
     }
 
-    // Championships: parse count (single/double digit) and optional year list
+    // Championships: parse count and optional year list
     const champLine = wikitext.match(/\|\s*championships\s*=([^\n|]+)/)
     let championships = null
     let championshipYears = []
@@ -85,13 +97,14 @@ export async function getWikipediaDriverStats(wikiUrl) {
       championshipYears = [...line.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m => m[1])
     }
 
-    return {
-      wins: num('wins'),
-      poles: num('poles'),
-      podiums: num('podiums'),
-      championships,
-      championshipYears,
-    }
+    const wins    = num('wins')
+    const poles   = num('poles')
+    const podiums = num('podiums')
+
+    // Return null only if absolutely nothing was found
+    if (wins == null && poles == null && championships == null) return null
+
+    return { wins, poles, podiums, championships, championshipYears }
   } catch {
     return null
   }

@@ -384,9 +384,11 @@ export function DriverPage() {
   const photoHD     = openf1Photo ?? wikiData?.photoOriginal ?? wikiData?.photo ?? null
   const wikiExtract = wikiData?.extract ?? null
 
-  // Prefer API data; fall back to Wikipedia infobox when API is 0 or missing
-  const displayWins  = (career?.wins  > 0) ? career.wins  : (wikiStats?.wins  ?? null)
-  const displayPoles = (career?.poles > 0) ? career.poles : (wikiStats?.poles ?? null)
+  // Use API value when present (0 is valid for debut drivers); fall back to Wikipedia only when null
+  const careerWins   = career?.wins  != null ? career.wins  : null
+  const careerPoles  = career?.poles != null ? career.poles : null
+  const displayWins  = careerWins  ?? wikiStats?.wins  ?? null
+  const displayPoles = careerPoles ?? wikiStats?.poles ?? null
 
   // Championship count and years: API history first, Wikipedia infobox as fallback
   const displayChampCount = champCount > 0
