@@ -2,8 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { getCircuitResults } from '../api/jolpica'
+import { getWikipediaImage } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
-import { getCircuitImage } from '../utils/images'
 import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY } from '../utils/flags'
 import { Skeleton } from '../components/ui/Skeleton'
 import { Flag } from '../components/ui/Flag'
@@ -21,11 +21,19 @@ export function CircuitPage() {
     enabled: !!circuitId,
   })
 
-  const lastRace       = races?.at(-1)
-  const circuit        = lastRace?.Circuit
-  const location       = circuit?.Location
-  const circuitImageUrl = getCircuitImage(circuitId)
-  const countryCode    = CIRCUIT_COUNTRY[circuitId]
+  const lastRace    = races?.at(-1)
+  const circuit     = lastRace?.Circuit
+  const location    = circuit?.Location
+  const countryCode = CIRCUIT_COUNTRY[circuitId]
+
+  const { data: wikiImage } = useQuery({
+    queryKey: ['wikiImage', 'circuit', circuitId],
+    queryFn: () => getWikipediaImage(circuit?.url),
+    enabled: !!circuit?.url,
+    staleTime: 86_400_000,
+  })
+
+  const circuitImageUrl = wikiImage ?? null
 
   if (isLoading) {
     return (
