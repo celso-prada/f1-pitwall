@@ -5,6 +5,7 @@ import {
   getDriverSeasonStats, getDriverResults, getDriverCareerStats,
   getDriverSeasonHistory, getDriverInfo,
 } from '../api/jolpica'
+import { getWikipediaDriverData } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
 import { DRIVER_NAT_CODE } from '../utils/flags'
 import { useDriverPhotos } from '../hooks/useDriverPhotos'
@@ -14,7 +15,7 @@ import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
-import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar, ExternalLink, BookOpen } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   BarChart, Bar, Cell,
@@ -252,7 +253,18 @@ export function DriverPage() {
   const constructor = standing?.Constructors?.[0]
   const color       = getTeamColor(constructor?.name)
   const natCode     = DRIVER_NAT_CODE[driver?.nationality]
-  const photo       = driver?.code ? photos[driver.code] : null
+  const openf1Photo = driver?.code ? photos[driver.code] : null
+
+  // Wikipedia fallback: fetch photo + PT-BR bio when no OpenF1 photo
+  const { data: wikiData } = useQuery({
+    queryKey: ['wikiDriver', driverId],
+    queryFn: () => getWikipediaDriverData(driver?.url),
+    enabled: !openf1Photo && !!driver?.url,
+    staleTime: 86_400_000,
+  })
+
+  const photo      = openf1Photo ?? wikiData?.photo ?? null
+  const wikiExtract = wikiData?.extract ?? null
 
   // Loading: block until we have at least one data source resolved
   const pageLoading = standLoading || (!currentStanding && (histLoading || infoLoading))
@@ -389,6 +401,28 @@ export function DriverPage() {
           {!resLoading && <RecentResults results={results} season={displaySeason} />}
         </div>
       </div>
+
+      {/* Wikipedia bio — PT-BR, shown for historical drivers without API bio */}
+      {wikiExtract && (
+        <Panel title="Biografia" icon={<BookOpen size={13} aria-hidden />}>
+          <div className="mt-2 space-y-2">
+            {wikiExtract.split('\n').filter(Boolean).map((para, i) => (
+              <p key={i} className="text-xs text-text-dim leading-relaxed">{para}</p>
+            ))}
+            {driver?.url && (
+              <a
+                href={driver.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[10px] mt-2 hover:underline"
+                style={{ color }}
+              >
+                <ExternalLink size={10} aria-hidden /> Leia mais na Wikipedia
+              </a>
+            )}
+          </div>
+        </Panel>
+      )}
     </PageShell>
   )
 }
