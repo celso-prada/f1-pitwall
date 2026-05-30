@@ -2,7 +2,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { getConstructorStandings, getConstructorRaces } from '../api/jolpica'
-import { getWikipediaImage } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
 import { getCarImage, CARBON_BG } from '../utils/images'
 import { formatDate } from '../utils/format'
@@ -31,13 +30,6 @@ export function TeamPage() {
   const constructor = standing?.Constructor
   const color       = getTeamColor(constructor?.name)
   const carImageUrl = getCarImage(constructorId)
-
-  const { data: wikiLogo } = useQuery({
-    queryKey: ['wikiImage', 'team', constructorId],
-    queryFn: () => getWikipediaImage(constructor?.url),
-    enabled: !carImageUrl && !!constructor?.url,
-    staleTime: 86_400_000,
-  })
 
   if (isLoading) {
     return (
@@ -119,23 +111,23 @@ export function TeamPage() {
         </div>
       </motion.div>
 
-      {/* Car image or team logo fallback */}
-      {(carImageUrl || wikiLogo) && (
+      {/* Car image */}
+      {carImageUrl && (
         <div
           className="relative rounded-2xl overflow-hidden flex items-center justify-center"
           style={{
             border: `1px solid ${color}22`,
             background: `var(--color-bg)`,
-            backgroundImage: carImageUrl ? `url(${CARBON_BG})` : 'none',
+            backgroundImage: `url(${CARBON_BG})`,
             backgroundSize: 'cover',
             backgroundBlendMode: 'overlay',
           }}
         >
           <img
-            src={carImageUrl ?? wikiLogo}
-            alt={carImageUrl ? `${constructor.name} F1 car` : `${constructor.name} logo`}
-            className="w-full object-contain py-8"
-            style={{ maxHeight: carImageUrl ? 280 : 160 }}
+            src={carImageUrl}
+            alt={`${constructor.name} F1 car`}
+            className="w-full object-contain py-4"
+            style={{ maxHeight: 280 }}
             onError={e => { e.target.parentElement.style.display = 'none' }}
           />
           <div className="absolute inset-0 pointer-events-none rounded-2xl"
