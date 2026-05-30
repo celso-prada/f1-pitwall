@@ -4,7 +4,6 @@ import { getCalendar } from '../../api/jolpica'
 import { formatDate } from '../../utils/format'
 import { CIRCUIT_COUNTRY } from '../../utils/flags'
 import { Flag } from '../ui/Flag'
-import { getCircuitImage } from '../../utils/images'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, Clock, ChevronRight } from 'lucide-react'
 import { Skeleton } from '../ui/Skeleton'
@@ -19,10 +18,8 @@ export function RaceCalendar({ season = 'current', compact = false }) {
 
   if (isLoading) {
     return (
-      <div className={compact ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5'}>
-        {Array.from({ length: compact ? 5 : 6 }).map((_, i) => (
-          <Skeleton key={i} height={compact ? 72 : 172} rounded={12} />
-        ))}
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height={72} rounded={12} />)}
       </div>
     )
   }
@@ -35,13 +32,12 @@ export function RaceCalendar({ season = 'current', compact = false }) {
   return (
     <div className={compact ? 'space-y-1.5' : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5'}>
       {list.map((race, i) => {
-        const raceDate    = new Date(race.date)
-        const isPast      = raceDate < now
-        const isNext      = !compact
+        const raceDate = new Date(race.date)
+        const isPast = raceDate < now
+        const isNext = !compact
           ? (!isPast && (races ?? []).slice(0, parseInt(race.round) - 1).every(r => new Date(r.date) < now))
           : (!isPast && list.slice(0, i).every(r => new Date(r.date) < now))
-        const countryCode  = CIRCUIT_COUNTRY[race.Circuit.circuitId] ?? null
-        const circuitImage = !compact ? getCircuitImage(race.Circuit.circuitId) : null
+        const countryCode = CIRCUIT_COUNTRY[race.Circuit.circuitId] ?? null
 
         const handleClick = () => {
           if (isPast) navigate(`/race/${race.season ?? season}/${race.round}`)
@@ -55,54 +51,15 @@ export function RaceCalendar({ season = 'current', compact = false }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: Math.min(i * 0.03, 0.4) }}
             onClick={handleClick}
-            className="card card-hover relative group overflow-hidden flex flex-col cursor-pointer"
+            className="card card-hover relative group overflow-hidden cursor-pointer"
             style={{
-              opacity:    isPast && !compact ? 0.6 : isPast ? 0.6 : 1,
-              border:     isNext ? '1px solid rgba(225,6,0,0.35)' : '1px solid var(--color-border)',
+              opacity: isPast && !compact ? 0.55 : isPast ? 0.6 : 1,
+              border: isNext ? '1px solid rgba(225,6,0,0.35)' : '1px solid var(--color-border)',
               background: isNext ? 'rgba(225,6,0,0.05)' : 'var(--color-surface)',
             }}
           >
-            {/* Circuit image — full calendar only */}
-            {!compact && (
-              <div
-                className="relative overflow-hidden flex-shrink-0 flex items-center justify-center"
-                style={{
-                  height: 108,
-                  background: 'var(--color-bg)',
-                  borderBottom: '1px solid var(--color-border-mute)',
-                }}
-              >
-                {/* Top accent for next race */}
-                {isNext && (
-                  <div className="absolute top-0 left-0 right-0 h-0.5 z-10"
-                    style={{ background: 'linear-gradient(90deg, transparent, var(--color-f1), transparent)' }} />
-                )}
-
-                {circuitImage ? (
-                  <img
-                    src={circuitImage}
-                    alt=""
-                    aria-hidden
-                    className="max-h-20 w-full object-contain px-5 py-2"
-                    onError={e => { e.target.style.display = 'none' }}
-                  />
-                ) : (
-                  <span className="text-5xl opacity-10 select-none" aria-hidden>🏁</span>
-                )}
-
-                {/* Past race overlay */}
-                {isPast && (
-                  <div className="absolute inset-0 flex items-center justify-end pr-3 pointer-events-none">
-                    <span className="text-[9px] text-white/60 font-bold uppercase tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">
-                      ver resultado →
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Top accent — compact next race */}
-            {compact && isNext && (
+            {/* Top accent for next race */}
+            {isNext && (
               <div className="absolute top-0 left-0 right-0 h-0.5"
                 style={{ background: 'linear-gradient(90deg, transparent, var(--color-f1), transparent)' }} />
             )}
@@ -126,7 +83,7 @@ export function RaceCalendar({ season = 'current', compact = false }) {
                       PRÓXIMA
                     </span>
                   )}
-                  {isPast && compact && (
+                  {isPast && (
                     <span className="text-[8px] text-text-mute opacity-0 group-hover:opacity-100 transition-opacity">
                       ver resultado →
                     </span>
@@ -138,7 +95,7 @@ export function RaceCalendar({ season = 'current', compact = false }) {
                 <div className="flex items-center gap-3 mt-0.5">
                   <div className="flex items-center gap-1 text-[9px] text-text-mute">
                     <MapPin size={9} aria-hidden />
-                    <span className="truncate max-w-[100px]">{race.Circuit.Location.locality}</span>
+                    <span className="truncate max-w-[120px]">{race.Circuit.Location.locality}</span>
                   </div>
                   <div className="flex items-center gap-1 text-[9px] text-text-mute flex-shrink-0">
                     <Clock size={9} aria-hidden />
