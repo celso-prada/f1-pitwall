@@ -1,35 +1,64 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { getCircuitResults } from '../api/jolpica'
-import { getCircuitSessions } from '../api/openf1'
+import { getCircuitResults, getCalendar } from '../api/jolpica'
 import { getTeamColor } from '../utils/teamColors'
 import { getCircuitImage } from '../utils/images'
-import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY, CIRCUIT_OPENF1_NAME } from '../utils/flags'
+import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY } from '../utils/flags'
 import { Skeleton } from '../components/ui/Skeleton'
 import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
 import { ArrowLeft, MapPin, Clock, Trophy, Calendar } from 'lucide-react'
 
-// Session name → PT-BR label
 const SESSION_PT = {
   'Practice 1': 'Treino Livre 1',
   'Practice 2': 'Treino Livre 2',
   'Practice 3': 'Treino Livre 3',
   'Sprint Qualifying': 'Classif. Sprint',
-  'Sprint Shootout': 'Classif. Sprint',
   'Sprint': 'Sprint',
   'Qualifying': 'Classificação',
   'Race': 'Corrida',
 }
 
-// session_type → accent color
 const SESSION_COLOR = {
   Practice: 'var(--color-text-mute)',
   Qualifying: '#818cf8',
   Sprint: '#f59e0b',
   Race: 'var(--color-f1)',
+}
+
+// Build normalized session list from a Jolpica calendar race entry.
+// Jolpica provides FirstPractice, SecondPractice, ThirdPractice, Qualifying,
+// Sprint (if sprint weekend), and race date+time — all in UTC.
+function buildScheduleSessions(race) {
+  if (!race) return []
+  const isSprint = !!race.Sprint
+  const sessions = []
+
+  const add = (name, type, dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return
+    const iso = `${dateStr}T${timeStr.endsWith('Z') ? timeStr : timeStr + 'Z'}`
+    const dt = new Date(iso)
+    if (!isNaN(dt.getTime())) {
+      sessions.push({ session_name: name, session_type: type, date_start: dt.toISOString() })
+    }
+  }
+
+  if (isSprint) {
+    add('Practice 1',        'Practice',   race.FirstPractice?.date,  race.FirstPractice?.time)
+    add('Sprint Qualifying', 'Sprint',     race.SecondPractice?.date, race.SecondPractice?.time)
+    add('Sprint',            'Sprint',     race.Sprint?.date,         race.Sprint?.time)
+    add('Qualifying',        'Qualifying', race.Qualifying?.date,     race.Qualifying?.time)
+  } else {
+    add('Practice 1', 'Practice',   race.FirstPractice?.date,  race.FirstPractice?.time)
+    add('Practice 2', 'Practice',   race.SecondPractice?.date, race.SecondPractice?.time)
+    add('Practice 3', 'Practice',   race.ThirdPractice?.date,  race.ThirdPractice?.time)
+    add('Qualifying', 'Qualifying', race.Qualifying?.date,     race.Qualifying?.time)
+  }
+  add('Race', 'Race', race.date, race.time)
+
+  return sessions.sort((a, b) => new Date(a.date_start) - new Date(b.date_start))
 }
 
 function formatBRT(dateStr) {
@@ -43,20 +72,24 @@ function formatBRT(dateStr) {
   }
 }
 
-function WeekendSchedule({ sessions, season }) {
+function WeekendSchedule({ sessions, raceName, season }) {
   if (!sessions?.length) return null
   const now = new Date()
 
   return (
-    <Panel title={`Fim de Semana · ${season}`} icon={<Calendar size={13} aria-hidden />}>
+    <Panel
+      title={`Fim de Semana · ${raceName ?? season}`}
+      icon={<Calendar size={13} aria-hidden />}
+    >
       <div className="mt-2 space-y-1">
         {sessions.map((session, i) => {
-          const isPast  = new Date(session.date_start) < now
-          const brt     = formatBRT(session.date_start)
-          const label   = SESSION_PT[session.session_name] ?? session.session_name
-          const color   = SESSION_COLOR[session.session_type] ?? 'var(--color-text)'
-          const isSprint = session.session_type === 'Sprint'
+          const isPast   = new Date(session.date_start) < now
+          const isNow    = !isPast && new Date(session.date_start) <= new Date(now.getTime() + 3_600_000)
+          const brt      = formatBRT(session.date_start)
+          const label    = SESSION_PT[session.session_name] ?? session.session_name
+          const color    = SESSION_COLOR[session.session_type] ?? 'var(--color-text)'
           const isRace   = session.session_type === 'Race'
+          const isSprint = session.session_type === 'Sprint'
 
           return (
             <div
@@ -68,7 +101,6 @@ function WeekendSchedule({ sessions, season }) {
                 background: (!isPast && (isRace || isSprint)) ? `${color}08` : 'transparent',
               }}
             >
-              {/* Session label */}
               <div className="flex-1 min-w-0">
                 <span
                   className="text-xs font-semibold"
@@ -78,29 +110,25 @@ function WeekendSchedule({ sessions, season }) {
                 </span>
               </div>
 
-              {/* Date + time */}
               {brt && (
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <span className="text-[10px] text-text-mute capitalize num">
                     {brt.weekday} {brt.date}
                   </span>
-                  <span
-                    className="num text-xs font-bold"
-                    style={{ color: isPast ? 'var(--color-text-mute)' : color }}
-                  >
+                  <span className="num text-xs font-bold" style={{ color: isPast ? 'var(--color-text-mute)' : color }}>
                     {brt.time}
                   </span>
                   <span className="text-[9px] text-text-mute">BRT</span>
                 </div>
               )}
 
-              {isPast
-                ? <span className="text-[10px] text-text-mute flex-shrink-0">✓</span>
-                : <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
-                    style={{ background: `${color}20`, color }}>
-                    ao vivo
-                  </span>
-              }
+              <span className="text-[10px] flex-shrink-0 w-8 text-right">
+                {isPast ? (
+                  <span className="text-text-mute">✓</span>
+                ) : isNow ? (
+                  <span className="font-bold" style={{ color }}>●</span>
+                ) : null}
+              </span>
             </div>
           )
         })}
@@ -120,23 +148,24 @@ export function CircuitPage() {
     staleTime: 3_600_000,
   })
 
+  // Current season calendar — provides FP1/FP2/FP3/Qualifying/Sprint/Race times
+  const { data: calendar = [] } = useQuery({
+    queryKey: ['calendar', 'current'],
+    queryFn: () => getCalendar('current'),
+    staleTime: 3_600_000,
+  })
+
   const sorted          = [...(races ?? [])].sort((a, b) => parseInt(b.season) - parseInt(a.season))
   const lastRace        = sorted[0]
   const circuit         = lastRace?.Circuit
   const location        = circuit?.Location
   const circuitImageUrl = getCircuitImage(circuitId)
   const countryCode     = CIRCUIT_COUNTRY[circuitId]
-  const openf1Name      = CIRCUIT_OPENF1_NAME[circuitId]
-  const thisYear        = new Date().getFullYear()
 
-  // OpenF1 sessions — always queries the current season year.
-  // Returns [] for circuits not on this year's calendar → panel stays hidden.
-  const { data: sessions = [] } = useQuery({
-    queryKey: ['circuitSessions', circuitId, thisYear],
-    queryFn: () => getCircuitSessions(thisYear, openf1Name),
-    enabled: !!openf1Name,
-    staleTime: 3_600_000,
-  })
+  // Find this circuit in the current season calendar
+  const calRace          = calendar.find(r => r.Circuit?.circuitId === circuitId) ?? null
+  const scheduleSessions = buildScheduleSessions(calRace)
+  const gpName           = calRace?.raceName?.replace(' Grand Prix', ' GP') ?? null
 
   if (isLoading) {
     return (
@@ -215,8 +244,8 @@ export function CircuitPage() {
             )}
           </div>
 
-          {/* Weekend schedule — only shown when OpenF1 has session data */}
-          <WeekendSchedule sessions={sessions} season={thisYear} />
+          {/* Weekend schedule — only for circuits in the current season calendar */}
+          <WeekendSchedule sessions={scheduleSessions} raceName={gpName} season={new Date().getFullYear()} />
         </div>
 
         {/* Right: all-time winners */}
