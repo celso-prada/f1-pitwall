@@ -49,6 +49,54 @@ export async function getWikipediaDriverData(wikiUrl) {
   }
 }
 
+// Parses Wikipedia infobox wikitext to extract structured F1 driver career stats.
+// Used as fallback when Jolpica/Ergast API has incomplete historical data.
+export async function getWikipediaDriverStats(wikiUrl) {
+  if (!wikiUrl) return null
+  const enTitle = decodeURIComponent(wikiUrl.split('/wiki/')[1] ?? '')
+  if (!enTitle) return null
+
+  try {
+    const res = await fetch(
+      `${EN_LANGLINKS}?action=query&titles=${encodeURIComponent(enTitle)}&prop=revisions&rvprop=content&rvsection=0&format=json&origin=*`,
+      { signal: AbortSignal.timeout(8000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const pages = Object.values(data.query?.pages ?? {})
+    const rev = pages[0]?.revisions?.[0]
+    const wikitext = rev?.slots?.main?.['*'] ?? rev?.['*'] ?? ''
+    if (!wikitext) return null
+
+    // Extract a plain integer from an infobox field line (handles commas like 1,566)
+    const num = (key) => {
+      const m = wikitext.match(new RegExp(`\\|\\s*${key}\\s*=\\s*([\\d,]+)`))
+      return m ? parseInt(m[1].replace(/,/g, ''), 10) : null
+    }
+
+    // Championships: parse count (single/double digit) and optional year list
+    const champLine = wikitext.match(/\|\s*championships\s*=([^\n|]+)/)
+    let championships = null
+    let championshipYears = []
+    if (champLine) {
+      const line = champLine[1]
+      const countM = line.match(/\b(\d{1,2})\b/)
+      championships = countM ? parseInt(countM[1], 10) : null
+      championshipYears = [...line.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m => m[1])
+    }
+
+    return {
+      wins: num('wins'),
+      poles: num('poles'),
+      podiums: num('podiums'),
+      championships,
+      championshipYears,
+    }
+  } catch {
+    return null
+  }
+}
+
 // Generic image fetch (circuits, teams) — kept simple
 export async function getWikipediaImage(wikiUrl) {
   if (!wikiUrl) return null

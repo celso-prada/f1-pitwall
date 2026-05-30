@@ -6,7 +6,7 @@ import {
   getDriverSeasonStats, getDriverResults, getDriverCareerStats,
   getDriverSeasonHistory, getDriverInfo, getDriverWins,
 } from '../api/jolpica'
-import { getWikipediaDriverData } from '../api/wikipedia'
+import { getWikipediaDriverData, getWikipediaDriverStats } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
 import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY } from '../utils/flags'
 import { useDriverPhotos } from '../hooks/useDriverPhotos'
@@ -359,9 +359,29 @@ export function DriverPage() {
     staleTime: 86_400_000,
   })
 
-  const photo      = openf1Photo ?? wikiData?.photo ?? null
-  const photoHD    = openf1Photo ?? wikiData?.photoOriginal ?? wikiData?.photo ?? null
+  // Wikipedia infobox stats — fallback for wins/poles/championships when API is incomplete
+  const { data: wikiStats } = useQuery({
+    queryKey: ['wikiDriverStats', driverId],
+    queryFn: () => getWikipediaDriverStats(driver?.url),
+    enabled: !!driver?.url && !standLoading,
+    staleTime: 86_400_000,
+  })
+
+  const photo       = openf1Photo ?? wikiData?.photo ?? null
+  const photoHD     = openf1Photo ?? wikiData?.photoOriginal ?? wikiData?.photo ?? null
   const wikiExtract = wikiData?.extract ?? null
+
+  // Prefer API data; fall back to Wikipedia infobox when API is 0 or missing
+  const displayWins  = (career?.wins  > 0) ? career.wins  : (wikiStats?.wins  ?? null)
+  const displayPoles = (career?.poles > 0) ? career.poles : (wikiStats?.poles ?? null)
+
+  // Championship count and years: API history first, Wikipedia infobox as fallback
+  const displayChampCount = champCount > 0
+    ? champCount
+    : (wikiStats?.championships ?? 0)
+  const displayChampYears = championships.length > 0
+    ? championships
+    : (wikiStats?.championshipYears ?? [])
 
   const pageLoading = standLoading || (!currentStanding && (histLoading || infoLoading))
 
@@ -464,17 +484,19 @@ export function DriverPage() {
               </div>
 
               {/* Championship badge */}
-              {champCount > 0 && (
+              {displayChampCount > 0 && (
                 <div className="mt-3">
                   <div className="flex items-center gap-1.5">
                     <Star size={14} fill="var(--color-gold)" style={{ color: 'var(--color-gold)' }} aria-hidden />
                     <span className="font-display font-bold text-base leading-none" style={{ color: 'var(--color-gold)' }}>
-                      {champCount}× Campeão Mundial
+                      {displayChampCount}× Campeão Mundial
                     </span>
                   </div>
-                  <div className="num text-[10px] mt-1" style={{ color: 'var(--color-text-mute)', opacity: 0.7 }}>
-                    {championships.join(', ')}
-                  </div>
+                  {displayChampYears.length > 0 && (
+                    <div className="num text-[10px] mt-1" style={{ color: 'var(--color-text-mute)', opacity: 0.7 }}>
+                      {displayChampYears.join(', ')}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -518,16 +540,16 @@ export function DriverPage() {
       {/* Stats */}
       {isActive ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="Pontos atual"     value={standing?.points} icon={<Star size={13} />}     color="var(--color-gold)" />
-          <Stat label="Vitórias atual"   value={standing?.wins}   icon={<Trophy size={13} />}   color={color} />
-          <Stat label="Vitórias carreira" value={career?.wins}    icon={<Trophy size={13} />}   color="var(--color-f1)" />
-          <Stat label="Poles carreira"   value={career?.poles}    icon={<FlagIcon size={13} />} color="#a78bfa" />
+          <Stat label="Pontos atual"      value={standing?.points} icon={<Star size={13} />}     color="var(--color-gold)" />
+          <Stat label="Vitórias atual"    value={standing?.wins}   icon={<Trophy size={13} />}   color={color} />
+          <Stat label="Vitórias carreira" value={displayWins}      icon={<Trophy size={13} />}   color="var(--color-f1)" />
+          <Stat label="Poles carreira"    value={displayPoles}     icon={<FlagIcon size={13} />} color="#a78bfa" />
         </div>
       ) : (
-        <div className={`grid gap-3 ${champCount > 0 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-2'}`}>
-          <Stat label="Vitórias carreira" value={career?.wins}           icon={<Trophy size={13} />}   color="var(--color-gold)" />
-          <Stat label="Poles carreira"    value={career?.poles}          icon={<FlagIcon size={13} />} color="#a78bfa" />
-          <Stat label="Temporadas"        value={career?.seasons?.length} icon={<Calendar size={13} />} color="var(--color-f1)" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Stat label="Vitórias carreira" value={displayWins}              icon={<Trophy size={13} />}   color="var(--color-gold)" />
+          <Stat label="Poles carreira"    value={displayPoles}             icon={<FlagIcon size={13} />} color="#a78bfa" />
+          <Stat label="Temporadas"        value={career?.seasons?.length}  icon={<Calendar size={13} />} color="var(--color-f1)" />
         </div>
       )}
 
