@@ -1,0 +1,262 @@
+import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getCalendar, getLastRaceResults, getDriverStandings } from '../api/jolpica'
+import { getLatestSession } from '../api/openf1'
+import { getNextRace } from '../utils/format'
+import { getTeamColor } from '../utils/teamColors'
+import { HERO_BG } from '../utils/images'
+import { DRIVER_NAT_CODE } from '../utils/flags'
+import { useCountdown } from '../hooks/useCountdown'
+import { DriverStandings } from '../components/standings/DriverStandings'
+import { ConstructorStandings } from '../components/standings/ConstructorStandings'
+import { RaceCalendar } from '../components/standings/RaceCalendar'
+import { NewsFeed } from '../components/news/NewsFeed'
+import { PageShell } from '../components/ui/PageShell'
+import { Panel } from '../components/ui/Panel'
+import { Flag } from '../components/ui/Flag'
+import { Radio, Trophy, MapPin, Zap, Newspaper } from 'lucide-react'
+
+function LiveEventBanner({ session }) {
+  const navigate = useNavigate()
+  const now = new Date()
+  const isLive = session &&
+    new Date(session.date_start) <= now &&
+    new Date(session.date_end) >= now
+
+  if (!isLive) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      onClick={() => navigate('/live')}
+      className="relative rounded-2xl overflow-hidden p-4 cursor-pointer group glow-live"
+      style={{ background: 'rgba(225,6,0,0.08)', border: '2px solid rgba(225,6,0,0.4)' }}
+    >
+      <div className="absolute inset-0 opacity-10"
+        style={{ background: 'radial-gradient(ellipse at center, #e10600, transparent 60%)' }} />
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-red-500 live-dot" />
+          <div>
+            <div className="text-red-400 text-xs font-black uppercase tracking-widest">Evento ao vivo agora</div>
+            <div className="text-white text-lg font-display font-bold uppercase">
+              {session.country_name} · {session.session_name}
+            </div>
+          </div>
+        </div>
+        <button
+          className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm group-hover:scale-105 transition-transform"
+          style={{ background: 'var(--color-f1)', color: 'white' }}
+          aria-label="Acompanhar sessão ao vivo"
+        >
+          <Radio size={14} aria-hidden />
+          Acompanhar
+        </button>
+      </div>
+    </motion.div>
+  )
+}
+
+function HeroCountdown({ raceDateTime, raceName, raceLocation }) {
+  const navigate = useNavigate()
+  const countdown = useCountdown(raceDateTime)
+  if (!countdown) return null
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center text-center px-4 py-8 relative z-10">
+      <p className="text-[11px] text-text-mute uppercase tracking-widest mb-1">Próxima corrida</p>
+      <h2 className="text-2xl font-display font-bold uppercase tracking-wide text-text mb-1">{raceName}</h2>
+      {raceLocation && (
+        <p className="flex items-center justify-center gap-1 text-[11px] text-text-mute mb-6">
+          <MapPin size={10} aria-hidden />{raceLocation}
+        </p>
+      )}
+      <div className="flex items-center justify-center gap-4">
+        {[
+          { v: countdown.d, l: 'Dias' },
+          { v: countdown.h, l: 'Horas' },
+          { v: countdown.m, l: 'Min' },
+          { v: countdown.s, l: 'Seg' },
+        ].map(({ v, l }, i) => (
+          <div key={l} className="flex items-center gap-4">
+            {i > 0 && <span className="num text-text-mute text-3xl font-bold self-start mt-1">:</span>}
+            <div className="flex flex-col items-center">
+              <motion.div
+                key={v}
+                initial={{ y: -6, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="num text-5xl font-bold text-text tabular-nums leading-none"
+              >
+                {String(v).padStart(2, '0')}
+              </motion.div>
+              <span className="text-[9px] text-text-mute uppercase tracking-widest mt-1.5">{l}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-8">
+        <button
+          onClick={() => navigate('/live')}
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95"
+          style={{ background: 'var(--color-f1)', color: 'white' }}
+        >
+          <Radio size={15} aria-hidden />
+          Acompanhar ao Vivo
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function LastRacePodium({ race }) {
+  const navigate = useNavigate()
+  if (!race) return null
+  const top3 = race.Results?.slice(0, 3) ?? []
+  const medals = ['🥇', '🥈', '🥉']
+  const order = [1, 0, 2]
+  const heights = [68, 90, 52]
+
+  return (
+    <Panel title={`Pódio · ${race.raceName?.replace(' Grand Prix', ' GP')}`} icon={<Trophy size={13} aria-hidden />}>
+      <div className="flex items-end justify-center gap-2 pt-3">
+        {order.map((idx, displayIdx) => {
+          const r = top3[idx]
+          if (!r) return null
+          const color = getTeamColor(r.Constructor.name)
+          const natCode = DRIVER_NAT_CODE[r.Driver.nationality]
+          return (
+            <div
+              key={idx}
+              className="flex flex-col items-center gap-1.5 flex-1 cursor-pointer group"
+              onClick={() => navigate(`/driver/${r.Driver.driverId}`)}
+            >
+              <div className="text-xl">{medals[idx]}</div>
+              <div
+                className="w-full rounded-t-lg flex flex-col items-center justify-center p-2 relative overflow-hidden transition-opacity group-hover:opacity-80"
+                style={{
+                  height: heights[displayIdx],
+                  background: `linear-gradient(to top, ${color}28, ${color}08)`,
+                  border: `1px solid ${color}35`,
+                }}
+              >
+                <Flag code={natCode} size={14} />
+                <span className="text-xs font-black text-text mt-1">{r.Driver.code}</span>
+                <span className="text-[9px] mt-0.5 truncate w-full text-center" style={{ color }}>
+                  {r.Constructor.name}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Panel>
+  )
+}
+
+function LeaderCard({ standing }) {
+  const navigate = useNavigate()
+  if (!standing) return null
+  const color = getTeamColor(standing.Constructors?.[0]?.name)
+  const natCode = DRIVER_NAT_CODE[standing.Driver.nationality]
+
+  return (
+    <div
+      className="card p-4 relative overflow-hidden cursor-pointer hover:border-opacity-50 transition-all flex items-center justify-center"
+      style={{ border: `1px solid ${color}30` }}
+      onClick={() => navigate(`/driver/${standing.Driver.driverId}`)}
+    >
+      <div className="absolute inset-0 opacity-[0.04]"
+        style={{ background: `radial-gradient(ellipse at top right, ${color}, transparent)` }} />
+      <div className="flex flex-col items-center justify-center text-center gap-1">
+        <div className="text-[9px] text-text-mute uppercase tracking-wider">Líder do Campeonato</div>
+        <div className="flex items-center gap-2 mt-1">
+          <Flag code={natCode} size={16} />
+          <div className="font-display font-bold text-xl text-text uppercase">
+            {standing.Driver.givenName} <span style={{ color }}>{standing.Driver.familyName}</span>
+          </div>
+        </div>
+        <div className="text-xs text-text-mute">{standing.Constructors?.[0]?.name}</div>
+        <div className="flex items-baseline gap-2 mt-2">
+          <span className="num text-3xl font-bold text-text">{standing.points}</span>
+          <span className="text-text-mute text-sm">pts</span>
+          <span className="num text-yellow-500 font-bold">{standing.wins}W</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function HomePage() {
+  const { data: races } = useQuery({ queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000 })
+  const { data: lastRace } = useQuery({ queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000 })
+  const { data: standings } = useQuery({ queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000 })
+  const { data: session } = useQuery({ queryKey: ['latestSession'], queryFn: getLatestSession, staleTime: 60_000 })
+
+  const nextRace = getNextRace(races ?? [])
+  const raceDateTime = nextRace ? `${nextRace.date}T${nextRace.time ?? '00:00:00'}` : null
+  const leader = standings?.[0]
+  const heroBg = HERO_BG
+
+  return (
+    <PageShell>
+      {/* Live Event Banner */}
+      <LiveEventBanner session={session} />
+
+      {/* Hero + top info row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Hero countdown — takes 2 cols */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 relative rounded-2xl overflow-hidden flex items-center justify-center"
+          style={{ border: '1px solid rgba(225,6,0,0.15)', minHeight: 200 }}
+        >
+          <div className="absolute inset-0"
+            style={{ backgroundImage: `url(${heroBg})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.1 }} />
+          <div className="absolute inset-0"
+            style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #130000 60%, #0a0a0a 100%)' }} />
+          <div className="absolute top-0 left-0 right-0 h-px"
+            style={{ background: 'linear-gradient(90deg, transparent, var(--color-f1), transparent)' }} />
+
+          {nextRace ? (
+            <HeroCountdown
+              raceDateTime={raceDateTime}
+              raceName={nextRace.raceName}
+              raceLocation={`${nextRace.Circuit?.Location?.locality}, ${nextRace.Circuit?.Location?.country}`}
+            />
+          ) : (
+            <div className="py-10 text-center text-text-mute">Temporada encerrada</div>
+          )}
+        </motion.div>
+
+        {/* Leader + Last race stacked in 1 col */}
+        <div className="flex flex-col gap-4">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <LeaderCard standing={leader} />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex-1">
+            <LastRacePodium race={lastRace} />
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Bottom data row: standings + calendar + news */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Panel title="Pilotos" icon={<Zap size={13} aria-hidden />}>
+          <DriverStandings season="current" />
+        </Panel>
+        <Panel title="Construtores" icon={<Trophy size={13} aria-hidden />}>
+          <ConstructorStandings season="current" />
+        </Panel>
+        <Panel title="Calendário" icon={<MapPin size={13} aria-hidden />}>
+          <RaceCalendar season="current" compact />
+        </Panel>
+        <Panel title="Notícias" icon={<Newspaper size={13} aria-hidden />}>
+          <NewsFeed limit={5} />
+        </Panel>
+      </div>
+    </PageShell>
+  )
+}

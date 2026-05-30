@@ -1,0 +1,203 @@
+@import "tailwindcss";
+@import "flag-icons/css/flag-icons.min.css";
+
+/* ─── Design Tokens ─────────────────────────────────────────────── */
+@theme {
+  /* Surfaces / Elevation */
+  --color-bg:         #080808;
+  --color-surface:    #101010;
+  --color-surface-2:  #161616;
+  --color-surface-3:  #1c1c1c;
+
+  /* Borders */
+  --color-border:       #1e1e1e;
+  --color-border-mute:  #161616;
+  --color-border-strong: #2e2e2e;
+
+  /* Text */
+  --color-text:     #eaeaea;
+  --color-text-dim: #a8a8a8;
+  --color-text-mute: #6e6e6e;
+
+  /* Brand */
+  --color-f1:       #e10600;
+  --color-f1-dim:   rgba(225, 6, 0, 0.12);
+  --color-gold:     #ffd700;
+  --color-silver:   #c0c0c0;
+  --color-bronze:   #cd7f32;
+
+  /* Fonts */
+  --font-display: 'Oswald', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+}
+
+/* ─── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+#root { width: 100%; min-height: 100vh; }
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-f1); }
+
+/* ─── Focus ring (accessible) ───────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-f1);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Typography helpers ─────────────────────────────────────────── */
+.font-display { font-family: var(--font-display); }
+.font-mono    { font-family: var(--font-mono); }
+
+/* Monospace tabular numbers — use on all timing / gap / lap data */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.f1-font {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* ─── Surface / Card system ─────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.card-hover {
+  transition: border-color 0.2s, transform 0.15s;
+  cursor: pointer;
+}
+.card-hover:hover {
+  border-color: var(--color-f1);
+  transform: translateY(-1px);
+}
+
+/* Elevated panels for modal-like overlays */
+.elev-1 {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.elev-2 {
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+
+/* Glass surface */
+.glass {
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ─── Section header / labels ────────────────────────────────────── */
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-mute);
+}
+
+/* ─── Stat display ───────────────────────────────────────────────── */
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: var(--color-text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ─── Team colour stripe ─────────────────────────────────────────── */
+.team-stripe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px 0 0 2px;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────── */
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+@keyframes slideUp {
+  from { transform: translateY(6px); opacity: 0.5; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ticker {
+  from { transform: translateX(100vw); }
+  to   { transform: translateX(-100%); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px  rgba(225,6,0,0.4); }
+  50%       { box-shadow: 0 0 22px rgba(225,6,0,0.85); }
+}
+@keyframes glow-pulse-subtle {
+  0%, 100% { box-shadow: 0 0 0px  rgba(225,6,0,0); }
+  50%       { box-shadow: 0 0 12px rgba(225,6,0,0.35); }
+}
+
+.live-dot      { animation: pulse-red 1.2s ease-in-out infinite; }
+.ticker-anim   { animation: ticker 50s linear infinite; }
+.fade-in       { animation: fadeIn 0.3s ease-out forwards; }
+.glow-red      { animation: glow-pulse 2s ease-in-out infinite; }
+.glow-live     { animation: glow-pulse-subtle 2.5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot, .ticker-anim, .fade-in, .glow-red, .glow-live { animation: none; }
+}
+
+/* ─── Skeleton loading ──────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface)   25%,
+    var(--color-surface-2) 50%,
+    var(--color-surface)   75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
