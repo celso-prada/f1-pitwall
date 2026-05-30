@@ -2,7 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  getDriverSeasonStats, getDriverResults, getDriverCareerStats, getDriverSeasonHistory
+  getDriverSeasonStats, getDriverResults, getDriverCareerStats,
+  getDriverSeasonHistory, getDriverInfo,
 } from '../api/jolpica'
 import { getTeamColor } from '../utils/teamColors'
 import { DRIVER_NAT_CODE } from '../utils/flags'
@@ -13,10 +14,10 @@ import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
-import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar } from 'lucide-react'
+import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar, ExternalLink } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  BarChart, Bar, Cell
+  BarChart, Bar, Cell,
 } from 'recharts'
 
 function SeasonChart({ history }) {
@@ -73,15 +74,14 @@ function SeasonHistoryTable({ history, navigate }) {
       }
     })
     .sort((a, b) => b.year - a.year)
-    .slice(0, 12)
 
   return (
     <Panel title="Histórico de Temporadas" icon={<Calendar size={13} aria-hidden />}>
-      <div className="overflow-x-auto mt-2">
+      <div className="overflow-y-auto mt-2" style={{ maxHeight: 320 }}>
         <table className="w-full text-xs">
-          <thead>
+          <thead className="sticky top-0" style={{ background: 'var(--color-surface)' }}>
             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              {['Ano', 'Equipe', 'Posição', 'Pontos', 'Vitórias'].map(h => (
+              {['Ano', 'Equipe', 'Pos', 'Pontos', 'V'].map(h => (
                 <th key={h} className="text-left py-1.5 px-2 section-title">{h}</th>
               ))}
             </tr>
@@ -94,13 +94,13 @@ function SeasonHistoryTable({ history, navigate }) {
                   key={row.year}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.03 }}
+                  transition={{ delay: Math.min(i * 0.02, 0.4) }}
                   onClick={() => row.teamId && navigate(`/team/${row.teamId}`)}
                   className="cursor-pointer transition-colors hover:bg-[var(--color-surface-2)]"
                   style={{ borderBottom: '1px solid var(--color-border-mute)' }}
                 >
                   <td className="py-1.5 px-2 num font-bold text-text">{row.year}</td>
-                  <td className="py-1.5 px-2" style={{ color: color + 'cc' }}>{row.team}</td>
+                  <td className="py-1.5 px-2 truncate max-w-[100px]" style={{ color: color + 'cc' }}>{row.team}</td>
                   <td className="py-1.5 px-2">
                     <span className="num font-black" style={{ color: row.pos === 1 ? 'var(--color-gold)' : 'var(--color-text)' }}>
                       P{row.pos}
@@ -118,7 +118,7 @@ function SeasonHistoryTable({ history, navigate }) {
   )
 }
 
-function PositionChart({ results, color }) {
+function PositionChart({ results, color, season }) {
   if (!results?.length) return null
   const data = results.map(r => ({
     race: r.raceName?.replace(' Grand Prix', '').replace(' Prix', '').slice(0, 8),
@@ -126,9 +126,10 @@ function PositionChart({ results, color }) {
   })).filter(d => d.pos > 0)
 
   if (data.length < 2) return null
+  const label = season && season !== 'current' ? `Temporada ${season}` : 'Temporada Atual'
 
   return (
-    <Panel title="Posições na Temporada Atual" icon={<Activity size={13} aria-hidden />}>
+    <Panel title={`Posições — ${label}`} icon={<Activity size={13} aria-hidden />}>
       <ResponsiveContainer width="100%" height={150}>
         <LineChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -147,12 +148,13 @@ function PositionChart({ results, color }) {
   )
 }
 
-function RecentResults({ results }) {
+function RecentResults({ results, season }) {
   if (!results?.length) return null
   const recent = [...results].reverse().slice(0, 8)
+  const label = season && season !== 'current' ? `Resultados ${season}` : 'Resultados Recentes'
 
   return (
-    <Panel title="Resultados Recentes" icon={<Trophy size={13} aria-hidden />}>
+    <Panel title={label} icon={<Trophy size={13} aria-hidden />}>
       <div className="space-y-1 mt-2">
         {recent.map((race, i) => {
           const r = race.Results?.[0]
@@ -194,37 +196,68 @@ function RecentResults({ results }) {
 export function DriverPage() {
   const { driverId } = useParams()
   const navigate = useNavigate()
+  const photos = useDriverPhotos()
 
-  const { data: standing, isLoading: standLoading } = useQuery({
+  // 1. Try current season (fast for active drivers)
+  const { data: currentStanding, isLoading: standLoading } = useQuery({
     queryKey: ['driverSeason', driverId],
     queryFn: () => getDriverSeasonStats(driverId),
     enabled: !!driverId,
+    retry: false,
   })
-  const { data: results, isLoading: resLoading } = useQuery({
-    queryKey: ['driverResults', driverId],
-    queryFn: () => getDriverResults(driverId),
-    enabled: !!driverId,
-  })
+
+  // 2. Career stats (all-time, works for any driver)
   const { data: career } = useQuery({
     queryKey: ['driverCareer', driverId],
     queryFn: () => getDriverCareerStats(driverId),
     enabled: !!driverId,
+    staleTime: 3_600_000,
   })
-  const { data: history } = useQuery({
+
+  // 3. Season history (all-time, works for any driver)
+  const { data: history, isLoading: histLoading } = useQuery({
     queryKey: ['driverHistory', driverId],
     queryFn: () => getDriverSeasonHistory(driverId),
     enabled: !!driverId,
     staleTime: 3_600_000,
   })
 
-  const photos      = useDriverPhotos()
-  const driver      = standing?.Driver
+  // 4. Driver basic info (fallback for retired drivers missing from standings)
+  const { data: driverInfo, isLoading: infoLoading } = useQuery({
+    queryKey: ['driverInfo', driverId],
+    queryFn: () => getDriverInfo(driverId),
+    enabled: !!driverId && !standLoading && !currentStanding,
+    staleTime: 86_400_000,
+    retry: false,
+  })
+
+  // Derive: most recent season from history (for retired drivers)
+  const sortedHistory = [...(history ?? [])].sort((a, b) => b.season - a.season)
+  const recentEntry   = sortedHistory[0]
+  const recentStanding = recentEntry?.DriverStandings?.[0] ?? null
+  const displaySeason  = currentStanding ? 'current' : (recentEntry?.season ?? null)
+  const isActive       = !!currentStanding
+
+  // 5. Season results for the relevant season
+  const { data: results, isLoading: resLoading } = useQuery({
+    queryKey: ['driverResults', driverId, displaySeason],
+    queryFn: () => getDriverResults(driverId, displaySeason),
+    enabled: !!driverId && !!displaySeason,
+    staleTime: 300_000,
+  })
+
+  // Compose final data from active standing → history standing → basic info
+  const standing    = currentStanding ?? recentStanding
+  const driver      = standing?.Driver ?? driverInfo
   const constructor = standing?.Constructors?.[0]
   const color       = getTeamColor(constructor?.name)
   const natCode     = DRIVER_NAT_CODE[driver?.nationality]
   const photo       = driver?.code ? photos[driver.code] : null
 
-  if (standLoading) {
+  // Loading: block until we have at least one data source resolved
+  const pageLoading = standLoading || (!currentStanding && (histLoading || infoLoading))
+
+  if (pageLoading) {
     return (
       <PageShell>
         <Skeleton height={180} rounded={16} />
@@ -238,6 +271,9 @@ export function DriverPage() {
   if (!driver) {
     return (
       <PageShell>
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-text-mute hover:text-text text-sm">
+          <ArrowLeft size={16} aria-hidden /> Voltar
+        </button>
         <div className="text-center text-text-mute py-20">Piloto não encontrado</div>
       </PageShell>
     )
@@ -266,7 +302,6 @@ export function DriverPage() {
         <div className="absolute inset-0 opacity-[0.06]"
           style={{ background: `radial-gradient(ellipse at top right, ${color}, transparent 60%)` }} />
 
-        {/* Driver photo — fades out to the left */}
         {photo && (
           <div className="absolute right-0 top-0 bottom-0 w-64 overflow-hidden">
             <img
@@ -287,7 +322,7 @@ export function DriverPage() {
         <div className="relative flex items-center gap-6">
           {/* Number badge */}
           <div
-            className="flex-shrink-0 w-20 h-20 rounded-2xl flex items-center justify-center num text-3xl font-bold overflow-hidden"
+            className="flex-shrink-0 w-20 h-20 rounded-2xl flex items-center justify-center num text-3xl font-bold"
             style={{ background: color + '20', border: `2px solid ${color}50`, color }}
           >
             {driver.permanentNumber ?? '?'}
@@ -297,45 +332,61 @@ export function DriverPage() {
             <div className="flex items-center gap-2 mb-1">
               <Flag code={natCode} size={18} />
               <span className="text-[10px] text-text-mute uppercase tracking-wider">{driver.nationality}</span>
+              {driver.dateOfBirth && (
+                <span className="text-[10px] text-text-mute">
+                  · {new Date(driver.dateOfBirth).toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </span>
+              )}
             </div>
             <h1 className="font-display font-bold text-3xl text-text uppercase leading-tight">
               {driver.givenName} <span style={{ color }}>{driver.familyName}</span>
             </h1>
-            <div className="text-sm mt-1.5" style={{ color: color + 'cc' }}>{constructor?.name}</div>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="num text-xs text-text-mute">#{driver.permanentNumber}</span>
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              {constructor?.name && (
+                <span className="text-sm" style={{ color: color + 'cc' }}>{constructor.name}</span>
+              )}
               {career?.seasons?.length > 0 && (
                 <span className="num text-xs text-text-mute">{career.seasons.length} temporadas</span>
+              )}
+              {driver.url && (
+                <a href={driver.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[10px] text-text-mute hover:text-text transition-colors">
+                  <ExternalLink size={10} aria-hidden /> Wikipedia
+                </a>
               )}
             </div>
           </div>
 
-          <div className="text-right hidden sm:block">
-            <div className="font-display font-bold text-5xl uppercase" style={{ color }}>
-              P{standing?.position}
+          {standing && (
+            <div className="text-right hidden sm:block flex-shrink-0">
+              <div className="font-display font-bold text-5xl uppercase" style={{ color }}>
+                P{standing.position}
+              </div>
+              <div className="text-[9px] text-text-mute mt-1 uppercase tracking-wide">
+                {isActive ? 'Campeonato' : `Temp. ${displaySeason}`}
+              </div>
             </div>
-            <div className="text-[9px] text-text-mute mt-1 uppercase tracking-wide">Campeonato</div>
-          </div>
+          )}
         </div>
       </motion.div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Pontos" value={standing?.points} icon={<Star size={13} />} color="var(--color-gold)" />
-        <Stat label="Vitórias temporada" value={standing?.wins} icon={<Trophy size={13} />} color={color} />
+        <Stat label={isActive ? 'Pontos atual' : `Pontos ${displaySeason}`} value={standing?.points} icon={<Star size={13} />} color="var(--color-gold)" />
+        <Stat label={isActive ? 'Vitórias atual' : `Vitórias ${displaySeason}`} value={standing?.wins} icon={<Trophy size={13} />} color={color} />
         <Stat label="Vitórias carreira" value={career?.wins} icon={<Trophy size={13} />} color="var(--color-f1)" />
         <Stat label="Poles carreira" value={career?.poles} icon={<FlagIcon size={13} />} color="#a78bfa" />
       </div>
 
-      {/* Charts + history in 2 cols on large screens */}
+      {/* Charts + history */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="space-y-4">
           {history && <SeasonChart history={history} />}
-          {!resLoading && <PositionChart results={results} color={color} />}
+          {!resLoading && <PositionChart results={results} color={color} season={displaySeason} />}
         </div>
         <div className="space-y-4">
           {history && <SeasonHistoryTable history={history} navigate={navigate} />}
-          {!resLoading && <RecentResults results={results} />}
+          {!resLoading && <RecentResults results={results} season={displaySeason} />}
         </div>
       </div>
     </PageShell>

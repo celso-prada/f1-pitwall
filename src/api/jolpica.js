@@ -42,6 +42,11 @@ export async function getDriverSeasonStats(driverId) {
   return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings[0] ?? null
 }
 
+export async function getDriverInfo(driverId) {
+  const data = await get(`/drivers/${driverId}.json`)
+  return data.MRData.DriverTable.Drivers[0] ?? null
+}
+
 export async function getCircuitResults(circuitId) {
   const first = await get(`/circuits/${circuitId}/results/1.json?limit=100`)
   const races = first.MRData.RaceTable.Races ?? []
