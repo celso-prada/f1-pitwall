@@ -166,6 +166,7 @@ export function Header() {
             <div className="flex-1" />
             <LiveSessionBadge />
             <NextRaceCountdown />
+            <span className="hidden lg:block text-[9px] text-text-mute opacity-30 tracking-widest select-none pl-2">by Celso Prada</span>
           </div>
 
           <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, var(--color-f1) 50%, transparent)' }} />
