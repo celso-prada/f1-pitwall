@@ -61,6 +61,12 @@ export function getNextRace(races) {
   return races.find(r => new Date(r.date) >= now) ?? races.at(-1)
 }
 
+export function isToday(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const now = new Date()
+  return now.getFullYear() === y && now.getMonth() + 1 === m && now.getDate() === d
+}
+
 export function positionSuffix(n) {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
-import { formatDate } from '../../utils/format'
+import { formatDate, isToday } from '../../utils/format'
 import { CIRCUIT_COUNTRY } from '../../utils/flags'
 import { Flag } from '../ui/Flag'
 import { useNavigate } from 'react-router-dom'
@@ -39,8 +39,10 @@ export function RaceCalendar({ season = 'current', compact = false }) {
           : (!isPast && list.slice(0, i).every(r => new Date(r.date) < now))
         const countryCode = CIRCUIT_COUNTRY[race.Circuit.circuitId] ?? null
 
+        const raceDay = isToday(race.date)
         const handleClick = () => {
-          if (isPast) navigate(`/race/${race.season ?? season}/${race.round}`)
+          if (raceDay) navigate('/live')
+          else if (isPast) navigate(`/race/${race.season ?? season}/${race.round}`)
           else navigate(`/circuit/${race.Circuit.circuitId}`)
         }
 

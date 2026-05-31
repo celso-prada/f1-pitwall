@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
 import { getLatestSession } from '../../api/openf1'
 import { useCountdown } from '../../hooks/useCountdown'
-import { getNextRace } from '../../utils/format'
+import { getNextRace, isToday } from '../../utils/format'
 import { TickerBar } from '../live/TickerBar'
 import { Radio, BarChart2, Calendar, Home, Headphones } from 'lucide-react'
 
@@ -19,6 +19,7 @@ function CountdownUnit({ value, label }) {
 }
 
 function NextRaceCountdown() {
+  const navigate = useNavigate()
   const { data: races } = useQuery({
     queryKey: ['calendar', 'current'],
     queryFn: () => getCalendar('current'),
@@ -31,8 +32,18 @@ function NextRaceCountdown() {
 
   if (!nextRace || !countdown) return null
 
+  const raceDay = isToday(nextRace.date)
+  const handleClick = () => {
+    if (raceDay) navigate('/live')
+    else navigate(`/circuit/${nextRace.Circuit.circuitId}`)
+  }
+
   return (
-    <div className="hidden sm:flex items-center gap-3">
+    <button
+      onClick={handleClick}
+      aria-label={raceDay ? 'Sessão ao vivo — acompanhar' : `Ver circuito — ${nextRace.raceName.replace(' Grand Prix', ' GP')}`}
+      className="hidden sm:flex items-center gap-3 hover:opacity-80 transition-opacity"
+    >
       <div className="hidden md:flex flex-col text-right leading-tight">
         <span className="text-[9px] text-text-mute uppercase tracking-wider">Próxima corrida</span>
         <span className="text-xs font-bold text-text">{nextRace.raceName.replace(' Grand Prix', ' GP')}</span>
@@ -47,7 +58,7 @@ function NextRaceCountdown() {
         <span className="text-text-mute font-bold text-xs num self-center pb-2">:</span>
         <CountdownUnit value={countdown.s} label="s" />
       </div>
-    </div>
+    </button>
   )
 }
 

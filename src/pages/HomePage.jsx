@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar, getLastRaceResults, getDriverStandings } from '../api/jolpica'
 import { getLatestSession } from '../api/openf1'
-import { getNextRace } from '../utils/format'
+import { getNextRace, isToday } from '../utils/format'
 import { getTeamColor } from '../utils/teamColors'
 import { HERO_BG } from '../utils/images'
 import { DRIVER_NAT_CODE } from '../utils/flags'
@@ -61,10 +61,15 @@ function LiveEventBanner({ session }) {
   )
 }
 
-function HeroCountdown({ raceDateTime, raceName, raceLocation }) {
+function HeroCountdown({ raceDateTime, raceName, raceLocation, circuitId, isRaceDay }) {
   const navigate = useNavigate()
   const countdown = useCountdown(raceDateTime)
   if (!countdown) return null
+
+  const handleClick = () => {
+    if (isRaceDay) navigate('/live')
+    else navigate(`/circuit/${circuitId}`)
+  }
 
   return (
     <div className="w-full flex flex-col items-center justify-center text-center px-4 py-8 relative z-10">
@@ -100,12 +105,12 @@ function HeroCountdown({ raceDateTime, raceName, raceLocation }) {
       </div>
       <div className="mt-8">
         <button
-          onClick={() => navigate('/live')}
+          onClick={handleClick}
           className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95"
           style={{ background: 'var(--color-f1)', color: 'white' }}
         >
           <Radio size={15} aria-hidden />
-          Acompanhar ao Vivo
+          {isRaceDay ? 'Acompanhar ao Vivo' : 'Ver Circuito'}
         </button>
       </div>
     </div>
@@ -230,6 +235,7 @@ export function HomePage() {
   const photos = useDriverPhotos()
   const nextRace = getNextRace(races ?? [])
   const raceDateTime = nextRace ? `${nextRace.date}T${nextRace.time ?? '00:00:00'}` : null
+  const raceDay = nextRace ? isToday(nextRace.date) : false
   const leader = standings?.[0]
   const heroBg = HERO_BG
 
@@ -259,6 +265,8 @@ export function HomePage() {
               raceDateTime={raceDateTime}
               raceName={nextRace.raceName}
               raceLocation={`${nextRace.Circuit?.Location?.locality}, ${nextRace.Circuit?.Location?.country}`}
+              circuitId={nextRace.Circuit?.circuitId}
+              isRaceDay={raceDay}
             />
           ) : (
             <div className="py-10 text-center text-text-mute">Temporada encerrada</div>
