@@ -72,9 +72,12 @@ function HeroCountdown({ raceDateTime, raceName, raceLocation, circuitId, isRace
   }
 
   return (
-    <div className="w-full flex flex-col items-center justify-center text-center px-4 py-8 relative z-10">
+    <div
+      onClick={handleClick}
+      className="w-full flex flex-col items-center justify-center text-center px-4 py-8 relative z-10 cursor-pointer group"
+    >
       <p className="text-[11px] text-text-mute uppercase tracking-widest mb-1">Próxima corrida</p>
-      <h2 className="text-2xl font-display font-bold uppercase tracking-wide text-text mb-1">{raceName}</h2>
+      <h2 className="text-2xl font-display font-bold uppercase tracking-wide text-text mb-1 group-hover:text-red-400 transition-colors">{raceName}</h2>
       {raceLocation && (
         <p className="flex items-center justify-center gap-1 text-[11px] text-text-mute mb-6">
           <MapPin size={10} aria-hidden />{raceLocation}
