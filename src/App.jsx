@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { hydrateQueryClient, persistQueryClient } from './utils/queryPersist'
 import { Header } from './components/ui/Header'
 import { HomePage } from './pages/HomePage'
 import { LivePage } from './pages/LivePage'
@@ -19,6 +20,10 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// Paint instantly from the last good data, then revalidate in the background.
+hydrateQueryClient(queryClient)
+persistQueryClient(queryClient)
 
 export default function App() {
   return (

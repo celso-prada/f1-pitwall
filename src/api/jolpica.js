@@ -1,7 +1,7 @@
 import * as f1api from './f1api'
 
 const BASE = 'https://api.jolpi.ca/ergast/f1'
-const TIMEOUT = 8000
+const TIMEOUT = 3000
 
 async function get(path) {
   // Bounded request — api.jolpi.ca can hang indefinitely when overloaded/down,
@@ -11,15 +11,63 @@ async function get(path) {
   return res.json()
 }
 
-// Try Jolpica first; if it times out / errors, fall back to f1api.dev so the
-// core views keep showing live data during a Jolpica outage.
-async function withFallback(label, primary, fallback) {
+// --- Circuit breaker ---------------------------------------------------------
+// Jolpica has been down for extended periods. Without this, every page load
+// pays the full timeout on each core call (in parallel, ~4s) before falling
+// back. Once Jolpica fails we remember it (persisted, survives reloads) and
+// skip straight to f1api.dev so subsequent loads are instant. After a cooldown
+// we probe Jolpica again so it recovers automatically when it comes back.
+const COOLDOWN_MS = 10 * 60 * 1000 // 10 min
+const KEY = 'jolpica_down_until'
+
+function jolpicaDown() {
   try {
-    return await primary()
-  } catch (err) {
-    console.warn(`[jolpica] ${label} failed (${err.message}); using f1api.dev fallback`)
-    return fallback()
-  }
+    const until = Number(localStorage.getItem(KEY))
+    return until && Date.now() < until
+  } catch { return false }
+}
+function markJolpicaDown() {
+  try { localStorage.setItem(KEY, String(Date.now() + COOLDOWN_MS)) } catch { /* ignore */ }
+}
+function markJolpicaUp() {
+  try { localStorage.removeItem(KEY) } catch { /* ignore */ }
+}
+
+// Hedge window: how long to give Jolpica before also firing the fallback.
+const HEDGE_MS = 1500
+
+// Resilient read with three layers:
+//  1. Breaker open  → skip Jolpica, go straight to f1api.dev (instant).
+//  2. Breaker closed → try Jolpica, but if it hasn't answered within HEDGE_MS,
+//     fire f1api.dev in parallel and return whichever finishes first (still
+//     preferring Jolpica's richer data if it wins the race).
+//  3. Jolpica errors → mark it down and use f1api.dev.
+async function withFallback(label, primary, fallback) {
+  if (jolpicaDown()) return fallback()
+
+  const primaryP = (async () => {
+    try { const r = await primary(); markJolpicaUp(); return r }
+    catch (err) {
+      console.warn(`[jolpica] ${label} failed (${err.message}); using f1api.dev fallback`)
+      markJolpicaDown()
+      throw err
+    }
+  })()
+
+  // Give Jolpica a head start; if it wins (or fails fast) we skip the fallback.
+  const first = await Promise.race([
+    primaryP.then(r => ({ from: 'primary', r }), () => ({ from: 'failed' })),
+    new Promise(res => setTimeout(() => res({ from: 'grace' }), HEDGE_MS)),
+  ])
+  if (first.from === 'primary') return first.r
+
+  // Jolpica is slow or already failed — race it against the fallback.
+  const fb = fallback().then(r => ({ from: 'fallback', r }))
+  const winner = await Promise.race([
+    primaryP.then(r => ({ from: 'primary', r }), () => fb),
+    fb,
+  ])
+  return winner.r
 }
 
 export async function getDriverStandings(season = 'current') {
