@@ -63,13 +63,23 @@ export async function getLastRaceResults() {
 }
 
 export async function getRaceResults(season, round) {
-  const data = await get(`/${season}/${round}/results.json`)
-  return data.MRData.RaceTable.Races[0] ?? null
+  return withFallback('raceResults',
+    async () => {
+      const data = await get(`/${season}/${round}/results.json`)
+      return data.MRData.RaceTable.Races[0] ?? null
+    },
+    () => f1api.getRaceResults(season, round),
+  )
 }
 
 export async function getDriverResults(driverId, season = 'current') {
-  const data = await get(`/${season}/drivers/${driverId}/results.json`)
-  return data.MRData.RaceTable.Races ?? []
+  return withFallback('driverResults',
+    async () => {
+      const data = await get(`/${season}/drivers/${driverId}/results.json`)
+      return data.MRData.RaceTable.Races ?? []
+    },
+    () => f1api.getDriverResults(driverId, season),
+  )
 }
 
 export async function getDriverSeasonStats(driverId) {
@@ -78,8 +88,13 @@ export async function getDriverSeasonStats(driverId) {
 }
 
 export async function getDriverInfo(driverId) {
-  const data = await get(`/drivers/${driverId}.json`)
-  return data.MRData.DriverTable.Drivers[0] ?? null
+  return withFallback('driverInfo',
+    async () => {
+      const data = await get(`/drivers/${driverId}.json`)
+      return data.MRData.DriverTable.Drivers[0] ?? null
+    },
+    () => f1api.getDriverInfo(driverId),
+  )
 }
 
 export async function getCircuitResults(circuitId) {
@@ -145,8 +160,13 @@ export async function getConstructorRaces(constructorId) {
 }
 
 export async function getQualifyingResults(season, round) {
-  const data = await get(`/${season}/${round}/qualifying.json`)
-  return data.MRData.RaceTable.Races[0] ?? null
+  return withFallback('qualifyingResults',
+    async () => {
+      const data = await get(`/${season}/${round}/qualifying.json`)
+      return data.MRData.RaceTable.Races[0] ?? null
+    },
+    () => f1api.getQualifyingResults(season, round),
+  )
 }
 
 export async function getDriverSeasonHistory(driverId) {

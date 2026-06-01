@@ -85,6 +85,105 @@ export async function getCalendar(season = 'current') {
   return (data.races ?? []).map(r => mapRace(r, yr))
 }
 
+// --- Race results by round (Ergast Race shape with .Results[]) ---------------
+function mapRaceResultItem(res, fastestTime) {
+  const fl = res.fastLap || null
+  return {
+    position: String(res.position),
+    points: String(res.points ?? 0),
+    grid: String(res.grid ?? ''),
+    status: res.retired ? String(res.retired) : 'Finished',
+    Time: res.time ? { time: String(res.time) } : undefined,
+    FastestLap: fl ? { rank: fl === fastestTime ? '1' : '0', Time: { time: fl } } : undefined,
+    Driver: mapDriver(res.driver),
+    Constructor: mapConstructor(res.team?.teamId, res.team?.teamName, res.team?.nationality),
+  }
+}
+
+export async function getRaceResults(season, round) {
+  const data = await get(`/${season}/${round}/race`)
+  const r = Array.isArray(data.races) ? data.races[0] : data.races
+  if (!r) return null
+  const results = r.results ?? []
+  // f1api gives each driver's fastest lap but no FL rank — derive it.
+  const laps = results.map(x => x.fastLap).filter(Boolean)
+  const fastest = laps.length ? laps.reduce((a, b) => (a < b ? a : b)) : null
+  return {
+    season: String(data.season ?? season),
+    round: String(r.round ?? round),
+    raceName: r.raceName,
+    date: r.date,
+    Circuit: {
+      circuitId: r.circuit?.circuitId,
+      circuitName: r.circuit?.circuitName,
+      Location: { locality: r.circuit?.city, country: r.circuit?.country },
+    },
+    Results: results.map(res => mapRaceResultItem(res, fastest)),
+  }
+}
+
+// --- Qualifying by round (Ergast shape with .QualifyingResults[]) -------------
+export async function getQualifyingResults(season, round) {
+  const data = await get(`/${season}/${round}/qualy`)
+  const r = Array.isArray(data.races) ? data.races[0] : data.races
+  if (!r) return null
+  return {
+    season: String(data.season ?? season),
+    round: String(r.round ?? round),
+    raceName: r.raceName,
+    Circuit: {
+      circuitId: r.circuit?.circuitId,
+      circuitName: r.circuit?.circuitName,
+      Location: { locality: r.circuit?.city, country: r.circuit?.country },
+    },
+    QualifyingResults: (r.qualyResults ?? []).map(q => ({
+      position: String(q.gridPosition ?? ''),
+      Q1: q.q1 ?? '',
+      Q2: q.q2 ?? '',
+      Q3: q.q3 ?? '',
+      Driver: mapDriver(q.driver),
+      Constructor: mapConstructor(q.team?.teamId, q.team?.teamName, q.team?.nationality),
+    })),
+  }
+}
+
+// --- Single driver bio (Ergast Driver shape) ---------------------------------
+export async function getDriverInfo(driverId) {
+  const data = await get(`/drivers/${driverId}`)
+  const d = Array.isArray(data.driver) ? data.driver[0] : data.driver
+  if (!d) return null
+  return { ...mapDriver(d), dateOfBirth: d.birthday, url: d.url }
+}
+
+// --- A driver's results for one season (Ergast Races[] with .Results[0]) ------
+// f1api returns driver/team at the top level and per-race {race, result}.
+export async function getDriverResults(driverId, season = 'current') {
+  const data = await get(`/${season}/drivers/${driverId}`)
+  const Driver = data.driver ? mapDriver(data.driver) : undefined
+  const Constructor = data.team
+    ? mapConstructor(data.team.teamId, data.team.teamName, data.team.country)
+    : undefined
+  return (data.results ?? []).map(({ race: r, result: res }) => ({
+    season: String(data.season ?? season),
+    round: String(r?.round ?? ''),
+    raceName: r?.name ?? r?.raceName,
+    date: r?.date,
+    Circuit: {
+      circuitId: r?.circuit?.circuitId,
+      Location: { locality: r?.circuit?.city, country: r?.circuit?.country },
+    },
+    Results: [{
+      position: String(res?.finishingPosition ?? ''),
+      points: String(res?.pointsObtained ?? 0),
+      grid: String(res?.gridPosition ?? ''),
+      status: res?.retired ? String(res.retired) : 'Finished',
+      Time: res?.raceTime ? { time: String(res.raceTime) } : undefined,
+      Driver,
+      Constructor,
+    }],
+  }))
+}
+
 export async function getLastRaceResults() {
   const data = await get('/current/last/race')
   const r = Array.isArray(data.races) ? data.races[0] : data.races
