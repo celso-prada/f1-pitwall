@@ -30,8 +30,10 @@ const TEAM_NAME = {
 }
 const teamName = (id, fallback) => TEAM_NAME[id] ?? fallback ?? id
 
-const mapDriver = d => ({
-  driverId: d.driverId,
+// idOverride: in some payloads (e.g. standings) the driverId sits on the parent
+// row, not inside the nested driver object — pass it in so navigation works.
+const mapDriver = (d, idOverride) => ({
+  driverId: idOverride ?? d.driverId,
   code: d.shortName,
   permanentNumber: d.number != null ? String(d.number) : undefined,
   givenName: d.name ?? '',
@@ -51,7 +53,7 @@ export async function getDriverStandings(season = 'current') {
     position: String(s.position),
     points: String(s.points),
     wins: String(s.wins ?? 0),
-    Driver: mapDriver(s.driver),
+    Driver: mapDriver(s.driver, s.driverId),
     Constructors: [mapConstructor(s.teamId, s.team?.teamName, s.team?.country)],
   }))
 }
@@ -64,6 +66,17 @@ export async function getConstructorStandings(season = 'current') {
     wins: String(s.wins ?? 0),
     Constructor: mapConstructor(s.teamId, s.team?.teamName, s.team?.country),
   }))
+}
+
+// Current championship row for a single driver (Ergast DriverStandings item).
+export async function getDriverSeasonStats(driverId, season = 'current') {
+  const list = await getDriverStandings(season)
+  return list.find(s => s.Driver?.driverId === driverId) ?? null
+}
+
+export async function getCurrentSeason() {
+  const data = await get('/current')
+  return String(data.season ?? new Date().getFullYear())
 }
 
 const mapRace = (r, season) => ({

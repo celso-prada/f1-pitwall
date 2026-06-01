@@ -83,8 +83,13 @@ export async function getDriverResults(driverId, season = 'current') {
 }
 
 export async function getDriverSeasonStats(driverId) {
-  const data = await get(`/current/drivers/${driverId}/driverStandings.json`)
-  return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings[0] ?? null
+  return withFallback('driverSeasonStats',
+    async () => {
+      const data = await get(`/current/drivers/${driverId}/driverStandings.json`)
+      return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings[0] ?? null
+    },
+    () => f1api.getDriverSeasonStats(driverId),
+  )
 }
 
 export async function getDriverInfo(driverId) {
@@ -187,6 +192,11 @@ export async function getLapTimes(season, round) {
 }
 
 export async function getCurrentSeason() {
-  const data = await get('/current.json')
-  return data.MRData.RaceTable.season
+  return withFallback('currentSeason',
+    async () => {
+      const data = await get('/current.json')
+      return data.MRData.RaceTable.season
+    },
+    () => f1api.getCurrentSeason(),
+  )
 }

@@ -1,14 +1,28 @@
 const BASE = 'https://api.openf1.org/v1'
 
 async function get(path) {
-  const res = await fetch(`${BASE}${path}`)
+  const res = await fetch(`${BASE}${path}`, { signal: AbortSignal.timeout(12000) })
   if (!res.ok) throw new Error(`OpenF1 ${path} → ${res.status}`)
   return res.json()
 }
 
+// Most recent session OpenF1 has data for. Prefers a session that is currently
+// live, otherwise the latest one to have started (any type, current year →
+// previous year as fallback so the page is never empty in the off-season).
 export async function getLatestSession() {
-  const data = await get('/sessions?session_type=Race&year=2025')
-  return data.at(-1) ?? null
+  const year = new Date().getFullYear()
+  const now = Date.now()
+  for (const y of [year, year - 1]) {
+    const data = await get(`/sessions?year=${y}`).catch(() => [])
+    if (!data.length) continue
+    const started = data
+      .filter(s => new Date(s.date_start).getTime() <= now)
+      .sort((a, b) => new Date(a.date_start) - new Date(b.date_start))
+    const live = started.find(s => new Date(s.date_end).getTime() >= now)
+    if (live) return live
+    if (started.length) return started.at(-1)
+  }
+  return null
 }
 
 export async function getSessionDrivers(sessionKey = 'latest') {
@@ -49,7 +63,7 @@ export async function getStints(sessionKey = 'latest') {
   return get(`/stints?session_key=${sessionKey}`)
 }
 
-export async function getSessions(year = 2025) {
+export async function getSessions(year = new Date().getFullYear()) {
   return get(`/sessions?year=${year}`)
 }
 
@@ -108,16 +122,20 @@ export async function getDriverPhotoMap() {
   return map
 }
 
-// Builds the current race order from position snapshots
+// Builds the current race order from position snapshots, annotating each driver
+// with `delta` = places gained (+) or lost (−) since their first recorded
+// position, the way a broadcast timing tower shows ▲/▼ next to the position.
 export function buildCurrentOrder(positions) {
   const latest = {}
+  const first = {}
   for (const p of positions) {
     const key = p.driver_number
-    if (!latest[key] || p.date > latest[key].date) {
-      latest[key] = p
-    }
+    if (!latest[key] || p.date > latest[key].date) latest[key] = p
+    if (!first[key] || p.date < first[key].date) first[key] = p
   }
-  return Object.values(latest).sort((a, b) => a.position - b.position)
+  return Object.values(latest)
+    .map(p => ({ ...p, delta: (first[p.driver_number]?.position ?? p.position) - p.position }))
+    .sort((a, b) => a.position - b.position)
 }
 
 // Gets latest interval per driver

@@ -4,9 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { PITWALL_BG } from '../utils/images'
 import {
   useLatestSession, useSessionDrivers, useLivePositions, useLiveIntervals,
-  useLiveWeather, usePitStops, useRaceControl, useTeamRadio, useStints,
+  useLiveWeather, usePitStops, useRaceControl, useTeamRadio, useStints, useLatestLaps,
 } from '../hooks/useLiveRace'
+import { deriveTrackStatus, buildLapInfo, currentLap } from '../utils/live'
 import { LiveTower } from '../components/live/LiveTower'
+import { TrackStatusBanner } from '../components/live/TrackStatusBanner'
 import { WeatherWidget } from '../components/live/WeatherWidget'
 import { RaceControlFeed } from '../components/live/RaceControlFeed'
 import { PitStopTracker } from '../components/live/PitStopTracker'
@@ -79,12 +81,16 @@ export function LivePage() {
   const { data: positions,   isLoading: posLoading }     = useLivePositions(sessionKey, isLive)
   const { data: intervals }                               = useLiveIntervals(sessionKey, isLive)
   const { data: weather,     isLoading: weatherLoading }  = useLiveWeather(sessionKey, isLive)
-  const { data: pits }                                    = usePitStops(sessionKey)
+  const { data: pits }                                    = usePitStops(sessionKey, isLive)
   const { data: raceControl, isLoading: rcLoading }       = useRaceControl(sessionKey, isLive)
-  const { data: teamRadio,   isLoading: radioLoading }    = useTeamRadio(sessionKey, isLive)
+  const { data: teamRadio }                               = useTeamRadio(sessionKey, isLive)
   const { data: stints }                                  = useStints(sessionKey, isLive)
+  const { data: laps }                                    = useLatestLaps(sessionKey, isLive)
 
   const loading = sessionLoading || driversLoading || posLoading
+  const trackStatus = deriveTrackStatus(raceControl)
+  const lapInfo = buildLapInfo(laps)
+  const lapNo = currentLap(laps)
 
   return (
     <div className="relative">
@@ -103,47 +109,37 @@ export function LivePage() {
       )}
 
       <div className="relative z-10 w-full max-w-[1800px] mx-auto px-4 lg:px-6 py-4 space-y-3">
-        {/* Session header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              {isLive
-                ? <LiveBadge />
-                : <span className="text-[9px] text-text-mute uppercase tracking-widest font-bold">Última sessão</span>
-              }
-            </div>
-            <h1 className="font-display font-bold text-2xl text-text uppercase tracking-wide">
-              {session ? `${session.country_name} · ${session.session_name}` : 'Carregando…'}
-            </h1>
-            {session && (
-              <div className="num text-xs text-text-mute mt-0.5">{session.circuit_short_name}</div>
-            )}
-          </div>
-          {!isLive && session && (
-            <div className="text-right">
-              <div className="text-[9px] text-text-mute uppercase tracking-wide">Encerrada</div>
-              <div className="num text-xs text-text-dim">
-                {new Date(session.date_end).toLocaleDateString('pt-BR')}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Track status banner — TV style */}
+        {session && (
+          <TrackStatusBanner
+            status={trackStatus}
+            sessionName={session.session_name}
+            gp={`${session.country_name} · ${session.circuit_short_name}`}
+            lap={isLive ? lapNo : null}
+            isLive={isLive}
+          />
+        )}
+        {!session && (
+          <h1 className="font-display font-bold text-2xl text-text uppercase tracking-wide">Carregando sessão…</h1>
+        )}
 
-        {/* 3-column pit wall grid */}
+        {/* Broadcast grid: wide timing tower + right rail */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
 
-          {/* COL 1: Torre + Driver quick info */}
-          <div className="xl:col-span-1 space-y-3">
+          {/* Timing tower (hero) */}
+          <div className="xl:col-span-2 space-y-3">
             <Panel
-              title="Torre"
+              title="Cronometragem"
               icon={<Activity size={12} aria-hidden />}
-              right={isLive && <LiveBadge />}
+              right={isLive ? <LiveBadge /> : <span className="text-[9px] text-text-mute uppercase tracking-widest">Última sessão</span>}
               padding="p-3"
             >
               <LiveTower
                 positions={positions}
                 drivers={drivers}
                 intervals={intervals}
+                stints={stints}
+                lapInfo={lapInfo}
                 loading={loading}
                 onSelectDriver={setSelectedDriver}
                 selectedDriver={selectedDriver}
@@ -157,28 +153,28 @@ export function LivePage() {
                 navigate={navigate}
               />
             )}
+
+            {/* Strategy + Pit side by side under the tower */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Panel title="Estratégia de Pneus" icon={<Layers size={12} aria-hidden />} padding="p-3">
+                <StintTracker stints={stints} positions={positions} drivers={drivers} loading={loading} />
+              </Panel>
+              <Panel title="Pit Stops" icon={<AlertCircle size={12} aria-hidden />} padding="p-3">
+                <PitStopTracker pits={pits} drivers={drivers} />
+              </Panel>
+            </div>
           </div>
 
-          {/* COL 2: Estratégia + Pit Stops + Team Radio */}
-          <div className="xl:col-span-1 space-y-3">
-            <Panel title="Estratégia de Pneus" icon={<Layers size={12} aria-hidden />} padding="p-3">
-              <StintTracker stints={stints} positions={positions} drivers={drivers} loading={loading} />
-            </Panel>
-            <Panel title="Pit Stops" icon={<AlertCircle size={12} aria-hidden />} padding="p-3">
-              <PitStopTracker pits={pits} drivers={drivers} />
-            </Panel>
-            <Panel title="Team Radio" icon={<Radio size={12} aria-hidden />} padding="p-3">
-              <TeamRadio messages={teamRadio} drivers={drivers} loading={radioLoading} />
-            </Panel>
-          </div>
-
-          {/* COL 3: Condições + Race Control + News */}
+          {/* Right rail */}
           <div className="xl:col-span-1 space-y-3">
             <Panel title="Condições" icon={<Cloud size={12} aria-hidden />} padding="p-3">
               <WeatherWidget weather={weather} loading={weatherLoading} />
             </Panel>
             <Panel title="Race Control" icon={<Radio size={12} aria-hidden />} padding="p-3">
               <RaceControlFeed messages={raceControl} loading={rcLoading} />
+            </Panel>
+            <Panel title="Team Radio" icon={<Radio size={12} aria-hidden />} padding="p-3">
+              <TeamRadio messages={teamRadio} drivers={drivers} loading={false} />
             </Panel>
             <Panel title="Notícias" icon={<Newspaper size={12} aria-hidden />} padding="p-3">
               <NewsFeed limit={4} />

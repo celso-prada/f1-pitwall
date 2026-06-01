@@ -17,7 +17,15 @@ import {
   buildLatestLaps,
 } from '../api/openf1'
 
-const LIVE_INTERVAL = 5000 // 5s polling
+// Staggered polling cadences. OpenF1's free tier allows ~3 req/s, and the live
+// view fans out to ~10 endpoints — firing them all on the same 5s tick trips
+// rate limiting (429). Spreading the intervals keeps each tick under budget
+// while still feeling live for the data that actually changes fast.
+const LIVE_INTERVAL = 5000   // core timing (positions, intervals)
+const LAPS_INTERVAL = 8000
+const RC_INTERVAL = 10000
+const PIT_INTERVAL = 12000
+const RADIO_INTERVAL = 15000
 
 export function useLatestSession() {
   return useQuery({
@@ -65,12 +73,12 @@ export function useLiveWeather(sessionKey, isLive) {
   })
 }
 
-export function usePitStops(sessionKey) {
+export function usePitStops(sessionKey, isLive) {
   return useQuery({
     queryKey: ['pits', sessionKey],
     queryFn: () => getPitStops(sessionKey),
     enabled: !!sessionKey,
-    refetchInterval: LIVE_INTERVAL,
+    refetchInterval: isLive ? PIT_INTERVAL : false,
   })
 }
 
@@ -79,7 +87,7 @@ export function useRaceControl(sessionKey, isLive) {
     queryKey: ['raceControl', sessionKey],
     queryFn: () => getRaceControl(sessionKey),
     enabled: !!sessionKey,
-    refetchInterval: isLive ? LIVE_INTERVAL : false,
+    refetchInterval: isLive ? RC_INTERVAL : false,
   })
 }
 
@@ -88,17 +96,18 @@ export function useTeamRadio(sessionKey, isLive) {
     queryKey: ['teamRadio', sessionKey],
     queryFn: () => getTeamRadio(sessionKey),
     enabled: !!sessionKey,
-    refetchInterval: isLive ? LIVE_INTERVAL : false,
+    refetchInterval: isLive ? RADIO_INTERVAL : false,
   })
 }
 
+// Returns the raw laps array — the live view derives latest/personal/session
+// bests from the full history (see utils/live → buildLapInfo).
 export function useLatestLaps(sessionKey, isLive) {
   return useQuery({
     queryKey: ['laps', sessionKey],
     queryFn: () => getLaps(sessionKey),
     enabled: !!sessionKey,
-    refetchInterval: isLive ? LIVE_INTERVAL : false,
-    select: buildLatestLaps,
+    refetchInterval: isLive ? LAPS_INTERVAL : false,
   })
 }
 
@@ -113,11 +122,19 @@ export function useStints(sessionKey, isLive) {
 }
 
 export function useRaceSessions() {
+  const year = new Date().getFullYear()
   return useQuery({
-    queryKey: ['raceSessions', 2025],
-    queryFn: () => getSessions(2025).then(data =>
-      data.filter(s => s.session_type === 'Race').reverse()
-    ),
+    queryKey: ['raceSessions', year],
+    queryFn: async () => {
+      // Current year first; fall back to last year in the off-season so the
+      // radio archive is never empty.
+      for (const y of [year, year - 1]) {
+        const data = await getSessions(y).catch(() => [])
+        const races = data.filter(s => s.session_type === 'Race').reverse()
+        if (races.length) return races
+      }
+      return []
+    },
     staleTime: 60 * 60 * 1000,
   })
 }
