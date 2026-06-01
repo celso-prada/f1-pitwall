@@ -1,30 +1,65 @@
+import * as f1api from './f1api'
+
 const BASE = 'https://api.jolpi.ca/ergast/f1'
+const TIMEOUT = 8000
 
 async function get(path) {
-  const res = await fetch(`${BASE}${path}`)
+  // Bounded request — api.jolpi.ca can hang indefinitely when overloaded/down,
+  // which previously left the UI stuck on skeletons forever.
+  const res = await fetch(`${BASE}${path}`, { signal: AbortSignal.timeout(TIMEOUT) })
   if (!res.ok) throw new Error(`Jolpica ${path} → ${res.status}`)
   return res.json()
 }
 
+// Try Jolpica first; if it times out / errors, fall back to f1api.dev so the
+// core views keep showing live data during a Jolpica outage.
+async function withFallback(label, primary, fallback) {
+  try {
+    return await primary()
+  } catch (err) {
+    console.warn(`[jolpica] ${label} failed (${err.message}); using f1api.dev fallback`)
+    return fallback()
+  }
+}
+
 export async function getDriverStandings(season = 'current') {
-  const data = await get(`/${season}/driverStandings.json`)
-  return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings ?? []
+  return withFallback('driverStandings',
+    async () => {
+      const data = await get(`/${season}/driverStandings.json`)
+      return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings ?? []
+    },
+    () => f1api.getDriverStandings(season),
+  )
 }
 
 export async function getConstructorStandings(season = 'current') {
-  const data = await get(`/${season}/constructorStandings.json`)
-  return data.MRData.StandingsTable.StandingsLists[0]?.ConstructorStandings ?? []
+  return withFallback('constructorStandings',
+    async () => {
+      const data = await get(`/${season}/constructorStandings.json`)
+      return data.MRData.StandingsTable.StandingsLists[0]?.ConstructorStandings ?? []
+    },
+    () => f1api.getConstructorStandings(season),
+  )
 }
 
-export async function getCalendar(season = '2025') {
-  const data = await get(`/${season}.json`)
-  return data.MRData.RaceTable.Races ?? []
+export async function getCalendar(season = 'current') {
+  return withFallback('calendar',
+    async () => {
+      const data = await get(`/${season}.json`)
+      return data.MRData.RaceTable.Races ?? []
+    },
+    () => f1api.getCalendar(season),
+  )
 }
 
 export async function getLastRaceResults() {
-  const data = await get('/current/last/results.json')
-  const race = data.MRData.RaceTable.Races[0]
-  return race ?? null
+  return withFallback('lastRaceResults',
+    async () => {
+      const data = await get('/current/last/results.json')
+      return data.MRData.RaceTable.Races[0] ?? null
+    },
+    () => f1api.getLastRaceResults(),
+  )
 }
 
 export async function getRaceResults(season, round) {
