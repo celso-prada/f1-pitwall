@@ -1,4 +1,5 @@
 import * as f1api from './f1api'
+import * as wiki from './wikipedia'
 
 const BASE = 'https://api.jolpi.ca/ergast/f1'
 const TIMEOUT = 3000
@@ -151,16 +152,27 @@ export async function getDriverInfo(driverId) {
 }
 
 export async function getCircuitResults(circuitId) {
-  const first = await get(`/circuits/${circuitId}/results/1.json?limit=100`)
-  const races = first.MRData.RaceTable.Races ?? []
-  const total = parseInt(first.MRData.total)
-  if (total <= 100) return races
-  const pages = await Promise.all(
-    Array.from({ length: Math.ceil((total - 100) / 100) }, (_, i) =>
-      get(`/circuits/${circuitId}/results/1.json?limit=100&offset=${(i + 1) * 100}`)
-    )
+  return withFallback('circuitResults',
+    async () => {
+      const first = await get(`/circuits/${circuitId}/results/1.json?limit=100`)
+      const races = first.MRData.RaceTable.Races ?? []
+      const total = parseInt(first.MRData.total)
+      if (total <= 100) return races
+      const pages = await Promise.all(
+        Array.from({ length: Math.ceil((total - 100) / 100) }, (_, i) =>
+          get(`/circuits/${circuitId}/results/1.json?limit=100&offset=${(i + 1) * 100}`)
+        )
+      )
+      return [...races, ...pages.flatMap(p => p.MRData.RaceTable.Races ?? [])]
+    },
+    // No per-circuit results on f1api.dev → reconstruct winners from Wikipedia's
+    // Grand Prix article, attaching f1api circuit metadata to each row.
+    async () => {
+      const info = await f1api.getCircuitInfo(circuitId).catch(() => null)
+      const winners = await wiki.getCircuitWinners(circuitId, info?.Location?.country)
+      return winners.map(w => ({ ...w, Circuit: info ?? { circuitId } }))
+    },
   )
-  return [...races, ...pages.flatMap(p => p.MRData.RaceTable.Races ?? [])]
 }
 
 export async function getDriverWins(driverId) {

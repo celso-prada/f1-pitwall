@@ -110,6 +110,131 @@ export async function getWikipediaDriverStats(wikiUrl) {
   }
 }
 
+// --- Circuit all-time winners (alternative route for getCircuitResults) ------
+// Jolpica's per-circuit results are dead with no equivalent on f1api.dev, so we
+// reconstruct the winner-by-year list from the Grand Prix article on Wikipedia,
+// exactly the kind of wiki fallback already used for driver photos/bios.
+
+const WIKI_PARSE = 'https://en.wikipedia.org/w/api.php'
+
+// circuitId → Grand Prix article title(s). Circuits that hosted differently
+// named races (Imola = San Marino + Emilia Romagna, Interlagos = Brazilian +
+// São Paulo) merge several articles. Keys cover both Ergast and f1api id spellings.
+const CIRCUIT_GP_TITLES = {
+  bahrain: ['Bahrain Grand Prix'], bahrein: ['Bahrain Grand Prix'],
+  jeddah: ['Saudi Arabian Grand Prix'],
+  albert_park: ['Australian Grand Prix'],
+  suzuka: ['Japanese Grand Prix'],
+  shanghai: ['Chinese Grand Prix'],
+  miami: ['Miami Grand Prix'],
+  imola: ['Emilia Romagna Grand Prix', 'San Marino Grand Prix'],
+  monaco: ['Monaco Grand Prix'],
+  villeneuve: ['Canadian Grand Prix'], gilles_villeneuve: ['Canadian Grand Prix'],
+  catalunya: ['Spanish Grand Prix'], montmelo: ['Spanish Grand Prix'],
+  madrid: ['Spanish Grand Prix'],
+  red_bull_ring: ['Austrian Grand Prix'],
+  silverstone: ['British Grand Prix'],
+  hungaroring: ['Hungarian Grand Prix'],
+  spa: ['Belgian Grand Prix'],
+  zandvoort: ['Dutch Grand Prix'],
+  monza: ['Italian Grand Prix'],
+  baku: ['Azerbaijan Grand Prix'],
+  marina_bay: ['Singapore Grand Prix'],
+  americas: ['United States Grand Prix'], austin: ['United States Grand Prix'],
+  rodriguez: ['Mexican Grand Prix', 'Mexico City Grand Prix'],
+  hermanos_rodriguez: ['Mexican Grand Prix', 'Mexico City Grand Prix'],
+  interlagos: ['São Paulo Grand Prix', 'Brazilian Grand Prix'],
+  losail: ['Qatar Grand Prix'], lusail: ['Qatar Grand Prix'],
+  yas_marina: ['Abu Dhabi Grand Prix'],
+  vegas: ['Las Vegas Grand Prix'],
+}
+
+// IOC (flagicon) 3-letter codes → nationality demonym used by DRIVER_NAT_CODE.
+const IOC_DEMONYM = {
+  GBR: 'British', NED: 'Dutch', ESP: 'Spanish', MON: 'Monegasque', MEX: 'Mexican',
+  AUS: 'Australian', CAN: 'Canadian', BRA: 'Brazilian', FRA: 'French', GER: 'German',
+  FIN: 'Finnish', JPN: 'Japanese', USA: 'American', CHN: 'Chinese', THA: 'Thai',
+  DEN: 'Danish', ITA: 'Italian', AUT: 'Austrian', ARG: 'Argentine', SUI: 'Swiss',
+  NZL: 'New Zealander', POL: 'Polish', SWE: 'Swedish', BEL: 'Belgian', RSA: 'South African',
+  COL: 'Colombian', VEN: 'Venezuelan', CZE: 'Czech', POR: 'Portuguese', IRL: 'Irish',
+}
+
+const deburr = s => s.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+
+const cleanConstructor = name => {
+  if (!name) return null
+  let n = name.replace(' in Formula One', '').replace(/^Scuderia /, '').replace(/^Team /, '').trim()
+  const MAP = { 'Mercedes-Benz': 'Mercedes', 'Red Bull Racing': 'Red Bull', 'Team Lotus': 'Lotus' }
+  return MAP[n] ?? n
+}
+
+// Parse the "By year" winners table out of a GP article's wikitext.
+function parseWinners(text) {
+  const out = {}
+  for (const row of text.split('\n|-')) {
+    if (/background:#(fcc|ff9|fc9)/.test(row)) continue // non-championship / pre-war
+    const ym = row.match(/\{\{F1\|(\d{4})\}\}/) || row.match(/\[\[(\d{4})\b/)
+    const fm = row.match(/\{\{flagicon\|([A-Za-z]{2,3})/)
+    if (!ym || !fm) continue
+    const year = parseInt(ym[1], 10)
+    if (year < 1950 || out[year]) continue
+    const after = row.slice(row.indexOf(fm[0]) + fm[0].length)
+    const dm = after.match(/\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]/)
+    if (!dm) continue
+    const driver = dm[1].replace(/\s*\([^)]*\)\s*$/, '').trim()
+    let constructor = null
+    for (const m of row.matchAll(/\n\|\s*\[\[([^\]|]+?)(?:\|[^\]]*)?\]\]/g)) {
+      const c = m[1]
+      if (/Report/.test(c) || /\d{4}/.test(c)) continue
+      constructor = cleanConstructor(c); break
+    }
+    out[year] = { year, ioc: fm[1].toUpperCase(), driver, constructor }
+  }
+  return out
+}
+
+async function fetchWikitext(title) {
+  const url = `${WIKI_PARSE}?action=parse&page=${encodeURIComponent(title)}&prop=wikitext&format=json&redirects=1&origin=*`
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+  if (!res.ok) return ''
+  const data = await res.json()
+  return data.parse?.wikitext?.['*'] ?? ''
+}
+
+// Returns winners newest-first in the Ergast race shape CircuitPage consumes.
+export async function getCircuitWinners(circuitId, country) {
+  const titles = CIRCUIT_GP_TITLES[circuitId]
+    ?? (country ? [`${country} Grand Prix`] : [])
+  if (!titles.length) return []
+
+  const texts = await Promise.allSettled(titles.map(fetchWikitext))
+  const merged = {}
+  for (const t of texts) {
+    if (t.status !== 'fulfilled' || !t.value) continue
+    const rows = parseWinners(t.value)
+    for (const [year, w] of Object.entries(rows)) {
+      if (!merged[year]) merged[year] = w
+    }
+  }
+
+  return Object.values(merged)
+    .sort((a, b) => b.year - a.year)
+    .map(w => {
+      const parts = w.driver.split(' ')
+      const familyName = parts.length > 1 ? parts.slice(1).join(' ') : w.driver
+      const givenName = parts.length > 1 ? parts[0] : ''
+      const driverId = deburr(parts.at(-1) ?? w.driver).toLowerCase().replace(/[^a-z]/g, '')
+      return {
+        season: String(w.year),
+        Results: [{
+          position: '1',
+          Driver: { driverId, givenName, familyName, nationality: IOC_DEMONYM[w.ioc] ?? null },
+          Constructor: { name: w.constructor ?? '—' },
+        }],
+      }
+    })
+}
+
 // Generic image fetch (circuits, teams) — kept simple
 export async function getWikipediaImage(wikiUrl) {
   if (!wikiUrl) return null

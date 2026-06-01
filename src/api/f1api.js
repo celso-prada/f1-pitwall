@@ -1,10 +1,26 @@
 // Fallback data source — f1api.dev — used when Jolpica/Ergast (api.jolpi.ca) is
 // unreachable. Maps f1api.dev responses into the Ergast/Jolpica shape the app
 // already consumes, so components need no changes.
-const BASE = 'https://f1api.dev/api'
+// In production, go through our Vercel serverless proxy so responses are served
+// from the edge cache (f1api.dev itself is ~4.5s/req). In dev there is no
+// serverless runtime, so hit f1api.dev directly.
+const DIRECT = 'https://f1api.dev/api'
+const USE_PROXY = import.meta.env.PROD
+
+const directUrl = path => `${DIRECT}/${path.replace(/^\//, '')}`
+const proxyUrl = path => `/api/f1?path=${encodeURIComponent(path.replace(/^\//, ''))}`
 
 async function get(path, ms = 12000) {
-  const res = await fetch(`${BASE}${path}`, { signal: AbortSignal.timeout(ms) })
+  // In production prefer the edge-cached proxy; if it's unavailable (e.g. the
+  // serverless function failed to deploy) fall back to hitting f1api.dev direct
+  // so the app keeps working — the proxy is an optimisation, not a dependency.
+  if (USE_PROXY) {
+    try {
+      const res = await fetch(proxyUrl(path), { signal: AbortSignal.timeout(ms) })
+      if (res.ok) return await res.json()
+    } catch { /* fall through to direct */ }
+  }
+  const res = await fetch(directUrl(path), { signal: AbortSignal.timeout(ms) })
   if (!res.ok) throw new Error(`f1api ${path} → ${res.status}`)
   return res.json()
 }
@@ -77,6 +93,28 @@ export async function getDriverSeasonStats(driverId, season = 'current') {
 export async function getCurrentSeason() {
   const data = await get('/current')
   return String(data.season ?? new Date().getFullYear())
+}
+
+// Circuit metadata in an Ergast-ish Circuit shape, plus the richer f1api extras
+// (lap record, corners, length, fastest-lap holder) used to enrich CircuitPage.
+export async function getCircuitInfo(circuitId) {
+  const data = await get(`/circuits/${circuitId}`)
+  const c = Array.isArray(data.circuit) ? data.circuit[0] : data.circuit
+  if (!c) return null
+  return {
+    circuitId: c.circuitId ?? circuitId,
+    circuitName: c.circuitName,
+    url: c.url,
+    Location: { locality: c.city, country: c.country },
+    // extras (not in Ergast)
+    length: c.circuitLength ?? null,
+    corners: c.numberOfCorners ?? null,
+    lapRecord: c.lapRecord ?? null,
+    firstYear: c.firstParticipationYear ?? null,
+    fastestLapDriverId: c.fastestLapDriverId ?? null,
+    fastestLapTeamId: c.fastestLapTeamId ?? null,
+    fastestLapYear: c.fastestLapYear ?? null,
+  }
 }
 
 const mapRace = (r, season) => ({

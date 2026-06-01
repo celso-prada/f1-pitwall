@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { getCircuitResults, getCalendar } from '../api/jolpica'
+import { getCircuitInfo } from '../api/f1api'
 import { getTeamColor } from '../utils/teamColors'
 import { getCircuitImage } from '../utils/images'
 import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY } from '../utils/flags'
@@ -9,7 +10,7 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
-import { ArrowLeft, MapPin, Clock, Trophy, Calendar } from 'lucide-react'
+import { ArrowLeft, MapPin, Clock, Trophy, Calendar, Ruler, CornerUpRight, Timer, Flag as FlagLine } from 'lucide-react'
 
 const SESSION_PT = {
   'Practice 1': 'Treino Livre 1',
@@ -137,6 +138,53 @@ function WeekendSchedule({ sessions, raceName, season }) {
   )
 }
 
+// Format a circuit lap-record string. f1api stores it oddly (e.g. "1:12:909");
+// normalise to "1:12.909".
+function fmtLapRecord(s) {
+  if (!s) return null
+  const m = s.match(/^(\d+):(\d{2})[:.](\d{3})$/)
+  return m ? `${m[1]}:${m[2]}.${m[3]}` : s
+}
+
+function CircuitMeta({ info, navigate }) {
+  if (!info) return null
+  const items = [
+    info.length && { icon: <Ruler size={13} aria-hidden />, label: 'Extensão', value: `${(info.length / 1000).toFixed(3)} km` },
+    info.corners && { icon: <CornerUpRight size={13} aria-hidden />, label: 'Curvas', value: info.corners },
+    info.firstYear && { icon: <FlagLine size={13} aria-hidden />, label: 'Desde', value: info.firstYear },
+    info.lapRecord && { icon: <Timer size={13} aria-hidden />, label: 'Recorde de volta', value: fmtLapRecord(info.lapRecord) },
+  ].filter(Boolean)
+  if (!items.length) return null
+
+  return (
+    <Panel title="Ficha do Circuito" icon={<MapPin size={13} aria-hidden />}>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {items.map((it, i) => (
+          <div key={i} className="flex flex-col gap-0.5 rounded-lg px-3 py-2"
+            style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border-mute)' }}>
+            <span className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-text-mute">
+              {it.icon}{it.label}
+            </span>
+            <span className="num text-sm font-bold text-text">{it.value}</span>
+          </div>
+        ))}
+      </div>
+      {info.fastestLapDriverId && info.lapRecord && (
+        <button
+          onClick={() => navigate(`/driver/${info.fastestLapDriverId}`)}
+          className="flex items-center gap-2 w-full mt-2 px-3 py-2 rounded-lg text-[11px] transition-colors hover:bg-[var(--color-surface-2)]"
+          style={{ border: '1px solid var(--color-border-mute)' }}
+        >
+          <Timer size={12} className="text-f1" style={{ color: 'var(--color-f1)' }} aria-hidden />
+          <span className="text-text-mute">Volta mais rápida por</span>
+          <span className="font-bold text-text capitalize">{info.fastestLapDriverId.replace(/_/g, ' ')}</span>
+          {info.fastestLapYear && <span className="num text-text-mute ml-auto">{info.fastestLapYear}</span>}
+        </button>
+      )}
+    </Panel>
+  )
+}
+
 export function CircuitPage() {
   const { circuitId } = useParams()
   const navigate = useNavigate()
@@ -148,6 +196,15 @@ export function CircuitPage() {
     staleTime: 3_600_000,
   })
 
+  // Rich circuit metadata (name, location, lap record, corners, length) — kept
+  // independent so the hero + facts render even when the winners list is empty.
+  const { data: info } = useQuery({
+    queryKey: ['circuitInfo', circuitId],
+    queryFn: () => getCircuitInfo(circuitId),
+    enabled: !!circuitId,
+    staleTime: 86_400_000,
+  })
+
   // Current season calendar — provides FP1/FP2/FP3/Qualifying/Sprint/Race times
   const { data: calendar = [] } = useQuery({
     queryKey: ['calendar', 'current'],
@@ -157,7 +214,7 @@ export function CircuitPage() {
 
   const sorted          = [...(races ?? [])].sort((a, b) => parseInt(b.season) - parseInt(a.season))
   const lastRace        = sorted[0]
-  const circuit         = lastRace?.Circuit
+  const circuit         = info ?? lastRace?.Circuit
   const location        = circuit?.Location
   const circuitImageUrl = getCircuitImage(circuitId)
   const countryCode     = CIRCUIT_COUNTRY[circuitId]
@@ -167,7 +224,7 @@ export function CircuitPage() {
   const scheduleSessions = buildScheduleSessions(calRace)
   const gpName           = calRace?.raceName?.replace(' Grand Prix', ' GP') ?? null
 
-  if (isLoading) {
+  if (isLoading && !circuit) {
     return (
       <PageShell>
         <Skeleton height={200} rounded={16} />
@@ -246,6 +303,9 @@ export function CircuitPage() {
             )}
           </div>
 
+          {/* Circuit facts (lap record, corners, length) — from f1api */}
+          <CircuitMeta info={info} navigate={navigate} />
+
           {/* Weekend schedule — only for circuits in the current season calendar */}
           <WeekendSchedule sessions={scheduleSessions} raceName={gpName} season={new Date().getFullYear()} />
         </div>
@@ -256,6 +316,11 @@ export function CircuitPage() {
           icon={<Trophy size={13} aria-hidden />}
         >
           <div className="overflow-y-auto mt-2" style={{ maxHeight: 480 }}>
+            {!sorted.length && (
+              <div className="text-center text-text-mute py-10 text-sm">
+                {isLoading ? 'Carregando vencedores…' : 'Histórico de vencedores indisponível'}
+              </div>
+            )}
             {sorted.map((race, i) => {
               const winner = race.Results?.[0]
               if (!winner) return null
