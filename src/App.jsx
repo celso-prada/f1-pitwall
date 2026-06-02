@@ -11,6 +11,7 @@ import { TeamPage } from './pages/TeamPage'
 import { CircuitPage } from './pages/CircuitPage'
 import { RacePage } from './pages/RacePage'
 import { RadioPage } from './pages/RadioPage'
+import { TelemetriaPage } from './pages/TelemetriaPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/circuit/:circuitId" element={<CircuitPage />} />
               <Route path="/race/:season/:round" element={<RacePage />} />
               <Route path="/radio" element={<RadioPage />} />
+              <Route path="/telemetria" element={<TelemetriaPage />} />
             </Routes>
           </main>
         </div>

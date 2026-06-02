@@ -5,7 +5,7 @@ import { getLatestSession } from '../../api/openf1'
 import { useCountdown } from '../../hooks/useCountdown'
 import { getNextRace, isToday } from '../../utils/format'
 import { TickerBar } from '../live/TickerBar'
-import { Radio, BarChart2, Calendar, Home, Headphones } from 'lucide-react'
+import { Radio, BarChart2, Calendar, Home, Headphones, Gauge } from 'lucide-react'
 
 function CountdownUnit({ value, label }) {
   return (
@@ -96,6 +96,7 @@ const NAV = [
   { path: '/standings',  label: 'Classificação', icon: BarChart2 },
   { path: '/calendar',   label: 'Calendário',  icon: Calendar },
   { path: '/radio',      label: 'Rádio',       icon: Headphones },
+  { path: '/telemetria', label: 'Telemetria',  icon: Gauge },
 ]
 
 export function Header() {
