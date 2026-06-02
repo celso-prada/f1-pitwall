@@ -173,7 +173,10 @@ function parseWinners(text) {
   const out = {}
   for (const row of text.split('\n|-')) {
     if (/background:#(fcc|ff9|fc9)/.test(row)) continue // non-championship / pre-war
-    const ym = row.match(/\{\{F1\|(\d{4})\}\}/) || row.match(/\[\[(\d{4})\b/)
+    // Year must come from a table header cell (`!`), otherwise the article
+    // lead/infobox (which links the "first race" year and mentions record
+    // winners by name) is mis-read as a winner row — e.g. Monaco 1950 → Senna.
+    const ym = row.match(/!\s*\{\{F1\|(\d{4})\}\}/) || row.match(/!\s*\[\[(\d{4})\b/)
     const fm = row.match(/\{\{flagicon\|([A-Za-z]{2,3})/)
     if (!ym || !fm) continue
     const year = parseInt(ym[1], 10)
