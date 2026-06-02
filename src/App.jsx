@@ -32,7 +32,10 @@ export default function App() {
       <BrowserRouter>
         <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
           <Header />
-          <main className="pb-20 md:pb-0">
+          {/* On mobile the fixed bottom nav (64px) sits over the page, so we
+              reserve its height + a small gap + the device safe-area inset.
+              That way the last line of every page stops just above the bar. */}
+          <main className="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/live" element={<LivePage />} />

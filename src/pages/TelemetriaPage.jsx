@@ -187,6 +187,12 @@ export function TelemetriaPage() {
 
       {/* Telemetry overlay */}
       <Panel title="Comparação — Volta Mais Rápida" icon={<Gauge size={12} aria-hidden />} padding="p-4">
+        <p className="text-[11px] text-neutral-500 leading-snug -mt-1 mb-3">
+          Sobrepõe a melhor volta dos pilotos <span className="text-neutral-300 font-semibold">1</span> e{' '}
+          <span className="text-neutral-300 font-semibold">2</span>. Use as abas para alternar entre velocidade,
+          acelerador, freio, marcha e RPM — onde uma linha fica acima da outra, aquele piloto foi melhor naquele
+          ponto da pista (freia mais tarde, acelera antes ou atinge maior velocidade).
+        </p>
         {(telA.isLoading || telB.isLoading) && selected.length
           ? <Skeleton height={300} rounded={8} />
           : <TelemetryChart drivers={pairEntries} />}
@@ -196,12 +202,19 @@ export function TelemetriaPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2">
           <Panel title="Ritmo de Corrida" icon={<Timer size={12} aria-hidden />} padding="p-4">
+            <p className="text-[11px] text-neutral-500 leading-snug -mt-1 mb-3">
+              Cada ponto é o tempo de uma volta na corrida. Quanto mais baixo, mais rápida a volta. Linha constante =
+              ritmo firme; subidas indicam pneu desgastando, tráfego ou safety car. Voltas de box/entrada são omitidas.
+            </p>
             {lapsLoading
               ? <Skeleton height={260} rounded={8} />
               : <PaceChart drivers={paceEntries} />}
           </Panel>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
+          <p className="text-[10px] text-neutral-600 uppercase tracking-widest font-semibold px-1">
+            Resumo da volta rápida · pilotos 1 e 2
+          </p>
           {pairEntries.length
             ? pairEntries.map(d => <LapStatsCard key={d.number} driver={d} />)
             : <div className="card p-6 text-center text-xs text-neutral-600">Selecione pilotos para ver o resumo</div>}

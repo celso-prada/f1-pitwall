@@ -65,16 +65,16 @@ export function TeamRadio({ messages, drivers, loading }) {
                   </span>
                   <span className="text-[9px] text-neutral-700 ml-auto">{formatTime(msg.date)}</span>
                 </div>
-                <a
-                  href={msg.recording_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] text-neutral-400 hover:text-white transition-colors"
-                  style={{ background: '#1e1e1e' }}
+                {/* Plays inline — no new tab, like the Rádio page. */}
+                <audio
+                  controls
+                  preload="none"
+                  src={msg.recording_url}
+                  className="w-full"
+                  style={{ height: 30, accentColor: color }}
                 >
-                  <Radio size={9} className="text-red-500 flex-shrink-0" />
-                  <span className="truncate">Ouvir rádio</span>
-                </a>
+                  Seu navegador não suporta áudio.
+                </audio>
               </div>
             </motion.div>
           )

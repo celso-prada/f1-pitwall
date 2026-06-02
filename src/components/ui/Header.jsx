@@ -145,7 +145,7 @@ export function Header() {
                     key={path}
                     onClick={() => navigate(path)}
                     aria-current={active ? 'page' : undefined}
-                    className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                    className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold leading-none transition-all duration-200 ${
                       active ? '' : 'hover:bg-[#141414]'
                     }`}
                     style={{
@@ -153,11 +153,11 @@ export function Header() {
                       background: active ? 'rgba(225,6,0,0.08)' : 'transparent',
                     }}
                   >
-                    <Icon size={15} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
-                    <span>{label}</span>
+                    <Icon size={15} strokeWidth={active ? 2.2 : 1.8} className="flex-shrink-0" aria-hidden />
+                    <span className="whitespace-nowrap">{label}</span>
                     {active && (
                       <span
-                        className="absolute bottom-0 left-3 right-3 h-px rounded-full"
+                        className="absolute bottom-0 left-3.5 right-3.5 h-px rounded-full"
                         style={{ background: 'var(--color-f1)', opacity: 0.7 }}
                       />
                     )}
