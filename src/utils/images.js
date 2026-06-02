@@ -67,7 +67,7 @@ export function getCircuitImage(circuitId) {
   return `/images/Circuits/${encodeURIComponent(file)}`
 }
 
-export const HERO_BG             = '/images/hero-bg.png'
-export const PITWALL_BG          = '/images/pitwall-bg.png'
-export const CARBON_BG           = '/images/carbon-bg.png'
-export const DRIVER_PLACEHOLDER  = '/images/driver-placeholder.png'
+export const HERO_BG             = '/images/hero-bg.webp'
+export const PITWALL_BG          = '/images/pitwall-bg.webp'
+export const CARBON_BG           = '/images/carbon-bg.webp'
+export const DRIVER_PLACEHOLDER  = '/images/driver-placeholder.webp'
