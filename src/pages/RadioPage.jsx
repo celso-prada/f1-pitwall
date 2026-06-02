@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Headphones, Radio, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRaceSessions, useSessionRadio } from '../hooks/useLiveRace'
@@ -172,7 +172,15 @@ export function RadioPage() {
   const [selectedKey, setSelectedKey] = useState(null)
   const { data: sessions, isLoading: sessionsLoading } = useRaceSessions()
 
+  // Auto-select the most recent race so the freshest radios show immediately.
+  useEffect(() => {
+    if (!selectedKey && sessions?.length) setSelectedKey(sessions[0].session_key)
+  }, [sessions, selectedKey])
+
   const selectedSession = sessions?.find(s => s.session_key === selectedKey)
+  const seasonLabel = sessions?.[0]?.date_start
+    ? new Date(sessions[0].date_start).getFullYear()
+    : new Date().getFullYear()
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
@@ -184,7 +192,7 @@ export function RadioPage() {
             Rádio das Equipes
           </h1>
         </div>
-        <p className="text-xs text-neutral-500 ml-8">Temporada 2025 — selecione uma corrida para ouvir os rádios</p>
+        <p className="text-xs text-neutral-500 ml-8">Temporada {seasonLabel} — selecione uma corrida para ouvir os rádios</p>
       </div>
 
       <div className="flex gap-4 items-start">
@@ -194,7 +202,7 @@ export function RadioPage() {
           style={{ background: '#0d0d0d', border: '1px solid var(--color-border)' }}
         >
           <p className="text-[9px] text-neutral-600 uppercase tracking-widest font-semibold mb-2 px-1">
-            Corridas 2025
+            Corridas {seasonLabel}
           </p>
           <RaceList
             sessions={sessions}

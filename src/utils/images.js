@@ -49,10 +49,15 @@ const CIRCUIT_MAP = {
   imola:         null,
 }
 
+// Cache-buster for car art. Filenames are reused when art is replaced, so the
+// browser/CDN would otherwise keep serving the old image. Bump this whenever a
+// car PNG is updated to force a fresh fetch.
+const CARS_VERSION = 2
+
 export function getCarImage(constructorId) {
   const file = CAR_MAP[constructorId?.toLowerCase()]
   if (!file) return null
-  return `/images/${encodeURIComponent(file)}`
+  return `/images/${encodeURIComponent(file)}?v=${CARS_VERSION}`
 }
 
 export function getCircuitImage(circuitId) {

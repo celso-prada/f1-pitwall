@@ -127,10 +127,15 @@ export function useRaceSessions() {
     queryKey: ['raceSessions', year],
     queryFn: async () => {
       // Current year first; fall back to last year in the off-season so the
-      // radio archive is never empty.
+      // radio archive is never empty. Only races that have already happened are
+      // included (future rounds have no radio yet) and they are ordered newest
+      // first so the latest GP is on top.
+      const now = Date.now()
       for (const y of [year, year - 1]) {
         const data = await getSessions(y).catch(() => [])
-        const races = data.filter(s => s.session_type === 'Race').reverse()
+        const races = data
+          .filter(s => s.session_type === 'Race' && new Date(s.date_start).getTime() <= now)
+          .sort((a, b) => new Date(b.date_start) - new Date(a.date_start))
         if (races.length) return races
       }
       return []
