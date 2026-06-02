@@ -31,12 +31,12 @@ function driverMeta(d) {
 // ── Session dropdown ─────────────────────────────────────────────────────────
 function SessionSelect({ sessions, value, onChange }) {
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-auto">
       <select
         value={value ?? ''}
         onChange={e => onChange(Number(e.target.value))}
-        className="appearance-none num text-xs font-semibold text-text pl-3 pr-9 py-2.5 rounded-lg cursor-pointer focus:outline-none"
-        style={{ background: '#0d0d0d', border: '1px solid var(--color-border-strong)', minWidth: 260 }}
+        className="appearance-none w-full sm:w-auto sm:min-w-[260px] num text-xs font-semibold text-text pl-3 pr-9 py-2.5 rounded-lg cursor-pointer focus:outline-none"
+        style={{ background: '#0d0d0d', border: '1px solid var(--color-border-strong)' }}
       >
         {sessions.map(s => (
           <option key={s.session_key} value={s.session_key} style={{ background: '#0d0d0d' }}>
@@ -179,7 +179,7 @@ export function TelemetriaPage() {
 
       {/* Driver picker */}
       <Panel title="Pilotos" icon={<Activity size={12} aria-hidden />} padding="p-3"
-        right={<span className="text-[9px] text-neutral-600 uppercase tracking-widest">1 e 2 = comparação de telemetria · até {MAX_DRIVERS} no ritmo</span>}>
+        right={<span className="hidden sm:inline text-[9px] text-neutral-600 uppercase tracking-widest">1 e 2 = comparação de telemetria · até {MAX_DRIVERS} no ritmo</span>}>
         {driversLoading
           ? <Skeleton height={32} />
           : <DriverPicker drivers={drivers ?? []} selected={selected} onToggle={toggle} />}

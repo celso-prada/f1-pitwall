@@ -90,13 +90,15 @@ function LiveSessionBadge() {
   )
 }
 
+// `short` is the compact label for the mobile bottom bar (6 items now — the long
+// names wrap onto two lines otherwise). Desktop uses `label`.
 const NAV = [
-  { path: '/',           label: 'Home',        icon: Home },
-  { path: '/live',       label: 'Ao Vivo',     icon: Radio },
-  { path: '/standings',  label: 'Classificação', icon: BarChart2 },
-  { path: '/calendar',   label: 'Calendário',  icon: Calendar },
-  { path: '/radio',      label: 'Rádio',       icon: Headphones },
-  { path: '/telemetria', label: 'Telemetria',  icon: Gauge },
+  { path: '/',           label: 'Home',          short: 'Home',     icon: Home },
+  { path: '/live',       label: 'Ao Vivo',       short: 'Ao Vivo',  icon: Radio },
+  { path: '/standings',  label: 'Classificação', short: 'Classif.', icon: BarChart2 },
+  { path: '/calendar',   label: 'Calendário',    short: 'Agenda',   icon: Calendar },
+  { path: '/radio',      label: 'Rádio',         short: 'Rádio',    icon: Headphones },
+  { path: '/telemetria', label: 'Telemetria',    short: 'Telem.',   icon: Gauge },
 ]
 
 export function Header() {
@@ -181,14 +183,15 @@ export function Header() {
         role="navigation"
         aria-label="Navegação principal"
       >
-        {NAV.map(({ path, label, icon: Icon }) => {
+        {NAV.map(({ path, label, short, icon: Icon }) => {
           const active = isActive(path)
           return (
             <button
               key={path}
               onClick={() => navigate(path)}
               aria-current={active ? 'page' : undefined}
-              className="relative flex-1 flex flex-col items-center justify-center gap-1 h-full transition-all duration-200 active:scale-95"
+              aria-label={label}
+              className="relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 h-full transition-all duration-200 active:scale-95"
               style={{ color: active ? 'var(--color-f1)' : 'var(--color-text-mute)' }}
             >
               {/* Top accent line */}
@@ -206,8 +209,8 @@ export function Header() {
               <div
                 className="flex items-center justify-center rounded-xl transition-all duration-200"
                 style={{
-                  width: 40,
-                  height: 28,
+                  width: 36,
+                  height: 26,
                   background: active ? 'rgba(225,6,0,0.12)' : 'transparent',
                 }}
               >
@@ -215,10 +218,10 @@ export function Header() {
               </div>
 
               <span
-                className="text-[10px] font-semibold leading-none tracking-wide transition-all duration-200"
+                className="text-[9px] font-semibold leading-none tracking-tight whitespace-nowrap transition-all duration-200"
                 style={{ opacity: active ? 1 : 0.55 }}
               >
-                {label}
+                {short ?? label}
               </span>
             </button>
           )
