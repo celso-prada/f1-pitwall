@@ -1,23 +1,24 @@
 // Central image registry — maps IDs to actual filenames in public/images/
-// Cars: flat in /images/. Circuits: in /images/Circuits/. Spaces handled with encodeURIComponent.
+// Cars: WebP renders in /images/cars/. Circuits: in /images/Circuits/.
+// Spaces handled with encodeURIComponent.
 
 const CAR_MAP = {
-  mclaren:          'McLaren.png',
-  ferrari:          'Ferrari.png',
-  red_bull:         'Red Bull.png',
-  red_bull_racing:  'Red Bull.png',
-  mercedes:         'Mercedes.png',
-  aston_martin:     'Aston Martin.png',
-  alpine:           'Alpine.png',
-  williams:         'Williams.png',
-  // Sem imagem ainda
-  haas:             null,
-  rb:               null,
-  racing_bulls:     null,
-  sauber:           null,
-  kick_sauber:      null,
-  audi:             null,
-  cadillac:         null,
+  mclaren:          'McLaren.webp',
+  ferrari:          'Ferrari.webp',
+  red_bull:         'Red Bull.webp',
+  red_bull_racing:  'Red Bull.webp',
+  mercedes:         'Mercedes.webp',
+  aston_martin:     'Aston Martin.webp',
+  alpine:           'Alpine.webp',
+  williams:         'Williams.webp',
+  haas:             'Haas.webp',
+  rb:               'Racing Bull.webp',
+  racing_bulls:     'Racing Bull.webp',
+  audi:             'Audi.webp',
+  // Sauber rebranded as Audi em 2026 — mesma arte
+  sauber:           'Audi.webp',
+  kick_sauber:      'Audi.webp',
+  cadillac:         'Cadillac.webp',
 }
 
 const CIRCUIT_MAP = {
@@ -51,13 +52,13 @@ const CIRCUIT_MAP = {
 
 // Cache-buster for car art. Filenames are reused when art is replaced, so the
 // browser/CDN would otherwise keep serving the old image. Bump this whenever a
-// car PNG is updated to force a fresh fetch.
-const CARS_VERSION = 2
+// car render is updated to force a fresh fetch.
+const CARS_VERSION = 3
 
 export function getCarImage(constructorId) {
   const file = CAR_MAP[constructorId?.toLowerCase()]
   if (!file) return null
-  return `/images/${encodeURIComponent(file)}?v=${CARS_VERSION}`
+  return `/images/cars/${encodeURIComponent(file)}?v=${CARS_VERSION}`
 }
 
 export function getCircuitImage(circuitId) {
