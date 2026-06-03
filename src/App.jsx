@@ -33,9 +33,13 @@ export default function App() {
         <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
           <Header />
           {/* On mobile the fixed bottom nav (64px) sits over the page, so we
-              reserve its height + a small gap + the device safe-area inset.
-              That way the last line of every page stops just above the bar. */}
-          <main className="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
+              reserve exactly its height (4rem) + the device safe-area inset.
+              The root background is black, so this padding reads as a black
+              margin matching the bar, and the last line of every page stops
+              right at the top edge of the menu instead of hiding behind it.
+              NOTE: the spaces around `+` are required — `calc(4rem+env(…))`
+              with no whitespace is invalid CSS and gets dropped entirely. */}
+          <main className="pb-[calc(4rem_+_env(safe-area-inset-bottom))] md:pb-0">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/live" element={<LivePage />} />
