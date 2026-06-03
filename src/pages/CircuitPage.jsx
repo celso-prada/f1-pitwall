@@ -315,7 +315,10 @@ export function CircuitPage() {
           title={`Todos os Vencedores${sorted.length ? ` · ${sorted.length}` : ''}`}
           icon={<Trophy size={13} aria-hidden />}
         >
-          <div className="overflow-y-auto mt-2" style={{ maxHeight: 480 }}>
+          {/* On mobile the list flows into the page so you can scroll the whole
+              page to the last winner (the page reserves the menu height below).
+              On xl the layout is two columns, so we bound + scroll it there. */}
+          <div className="mt-2 xl:overflow-y-auto xl:max-h-[480px]">
             {!sorted.length && (
               <div className="text-center text-text-mute py-10 text-sm">
                 {isLoading ? 'Carregando vencedores…' : 'Histórico de vencedores indisponível'}
