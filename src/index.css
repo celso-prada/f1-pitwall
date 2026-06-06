@@ -45,6 +45,16 @@ body {
 
 #root { width: 100%; min-height: 100vh; }
 
+/* ─── Mobile bottom-nav clearance ───────────────────────────────────
+   Reserva a altura da barra de navegação fixa (4rem) + a safe-area do
+   aparelho, para que a última linha de QUALQUER página pare no topo do
+   menu em vez de rolar por trás dele. No md+ não há barra inferior.
+   (Classe CSS real em vez de utilitário arbitrário do Tailwind: o
+   `pb-[calc(4rem+env(…))]` não era gerado pelo Tailwind v4 e resultava
+   em padding-bottom: 0 — daí o conteúdo ficava escondido sob o menu.) */
+.pb-mobile-nav { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) { .pb-mobile-nav { padding-bottom: 0; } }
+
 /* ─── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-surface); }
