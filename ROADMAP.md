@@ -20,12 +20,15 @@ reais (sem mock), PT-BR, publicada no Vercel.
   fallback. *Médio.*
 - [ ] **1.3 Camada de dados unificada + documentada.** Consolidar a estratégia
   de fallback num resolver por tipo de dado e atualizar `DATA_SOURCES.md`. *Médio.*
-- [ ] **1.4 Error boundaries por painel.** Um widget que falha não apaga a
-  página. *Baixo.*
+- [x] **1.4 Error boundaries por painel.** Um widget que falha não apaga a
+  página. *Baixo.* — feito: `ErrorBoundary` embutido no `Panel` (todo painel
+  isola sua falha com aviso discreto) + boundary de rota no `App` (key no
+  pathname remonta ao navegar).
 
 ## 2. Experiência "ao lado da TV" — alto valor
-- [ ] **2.1 Sincronia de atraso (delay).** Atrasar o timing em X s para casar
-  com o atraso da transmissão (como o undercut-f1). *Médio.*
+- [~] **2.1 Sincronia de atraso (delay).** ~~Atrasar o timing em X s para casar
+  com o atraso da transmissão.~~ **Descartado por decisão do produto (2026-06):**
+  o valor do app é justamente ver o ao vivo À FRENTE da TV; manter assim.
 - [ ] **2.2 Alertas/notificações (PWA push).** Piloto/equipe favoritos: início
   de sessão, bandeira vermelha/SC, pit, volta mais rápida, eliminação na quali.
   *Médio-alto.*
@@ -62,8 +65,10 @@ reais (sem mock), PT-BR, publicada no Vercel.
   rotas via `lazy()`+`Suspense` (Home eager), Recharts/framer-motion em chunks
   próprios. Entry caiu para ~287KB (gzip 90KB); Recharts (366KB) só carrega nas
   rotas de gráfico.
-- [ ] **7.2 Testes das funções puras** (`normalizeLive`, `computeSessionBests`,
-  `deriveTrackStatus`, parsers). *Baixo.*
+- [x] **7.2 Testes das funções puras** (`normalizeLive`, `computeSessionBests`,
+  `deriveTrackStatus`, parsers). *Baixo.* — feito: Vitest + 51 testes cobrindo
+  `live.js`, `livetiming.js` e `format.js` (`npm test`). De quebra, zerados os 5
+  lints pré-existentes (imports não usados + set-state-in-effect derivado).
 - [x] **7.3 Endpoint de saúde das fontes** (status de cada upstream). *Baixo.* —
   feito: `/api/health` (core `_health.mjs`, também servido em dev pelo Vite)
   pinga as 7 fontes em paralelo; página `/status` (link discreto no header)

@@ -1,0 +1,19 @@
+1.4 error boundaries por painel + 7.2 testes das funcoes puras
+
+1.4: novo ErrorBoundary (classe) embutido no Panel -- qualquer painel que estoure
+(ex.: shape inesperado de uma fonte) isola a falha com um aviso discreto, sem
+apagar a pagina; critico durante o ao vivo. Boundary de rota no App como ultima
+linha de defesa, com key no pathname para remontar (o erro some ao navegar).
+
+7.2: Vitest adicionado (npm test). 51 testes cobrindo as funcoes puras de
+live.js (deriveTrackStatus, buildLapInfo, lapTone, fmtLap, currentLap,
+buildClassification, tyreOf), livetiming.js (segTone, trackStatusOf,
+normalizeLive, computeSessionBests) e format.js. De quebra, zerados os 5 lints
+pre-existentes: imports nao usados (buildLatestLaps, Clock) e os 3
+set-state-in-effect (RadioPage/TelemetriaPage) reescritos como derivacao em
+render (padrao "you might not need an effect"), sem mudar comportamento.
+
+ROADMAP: 2.1 (delay) marcado como descartado por decisao do produto -- o valor
+do app e ver o ao vivo a frente da TV.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>

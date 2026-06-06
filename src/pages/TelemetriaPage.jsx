@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Gauge, Activity, Timer, ChevronDown } from 'lucide-react'
 import { Panel } from '../components/ui/Panel'
 import { Skeleton } from '../components/ui/Skeleton'
@@ -85,20 +85,24 @@ function DriverPicker({ drivers, selected, onToggle }) {
 
 export function TelemetriaPage() {
   const { data: sessions, isLoading: sessionsLoading } = useSeasonSessions()
-  const [sessionKey, setSessionKey] = useState(null)
+  const [pickedKey, setPickedKey] = useState(null)
   const [selected, setSelected] = useState([])
 
-  // Default to the most recent session once loaded.
-  useEffect(() => {
-    if (sessionKey == null && sessions?.length) setSessionKey(sessions[0].session_key)
-  }, [sessions, sessionKey])
+  // Default derivado para a sessão mais recente até o usuário escolher outra —
+  // sem efeito (evita o cascading-render que o set-state-in-effect provoca).
+  const sessionKey = pickedKey ?? sessions?.[0]?.session_key ?? null
+  const setSessionKey = setPickedKey
 
   const { data: drivers, isLoading: driversLoading } = useSessionDriversList(sessionKey)
 
-  // Reset/seed the selection whenever the session changes.
-  useEffect(() => {
-    if (drivers?.length) setSelected(drivers.slice(0, 2).map(d => d.driver_number))
-  }, [drivers])
+  // Semeia os 2 primeiros pilotos quando a sessão muda. Reset em fase de render
+  // (padrão "you might not need an effect"): só re-semeia quando a sessão troca,
+  // então não atropela a seleção do usuário num refetch em background.
+  const [seedKey, setSeedKey] = useState(null)
+  if (drivers?.length && seedKey !== sessionKey) {
+    setSeedKey(sessionKey)
+    setSelected(drivers.slice(0, 2).map(d => d.driver_number))
+  }
 
   const toggle = (num) => {
     setSelected(prev => {

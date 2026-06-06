@@ -16,7 +16,7 @@ import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
-import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar, ExternalLink, BookOpen, Clock, ZoomIn } from 'lucide-react'
+import { ArrowLeft, Trophy, Star, Flag as FlagIcon, Activity, Calendar, ExternalLink, BookOpen, ZoomIn } from 'lucide-react'
 import {
   BarChart, Bar, Cell, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,

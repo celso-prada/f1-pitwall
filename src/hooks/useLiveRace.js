@@ -15,7 +15,6 @@ import {
   buildCurrentOrder,
   buildLatestIntervals,
   buildCurrentStints,
-  buildLatestLaps,
 } from '../api/openf1'
 
 // Staggered polling cadences. OpenF1's free tier allows ~3 req/s, and the live

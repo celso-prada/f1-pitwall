@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Headphones, Radio, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRaceSessions, useSessionRadio } from '../hooks/useLiveRace'
@@ -169,13 +169,14 @@ function RadioFeed({ sessionKey }) {
 }
 
 export function RadioPage() {
-  const [selectedKey, setSelectedKey] = useState(null)
+  const [pickedKey, setPickedKey] = useState(null)
   const { data: sessions, isLoading: sessionsLoading } = useRaceSessions()
 
-  // Auto-select the most recent race so the freshest radios show immediately.
-  useEffect(() => {
-    if (!selectedKey && sessions?.length) setSelectedKey(sessions[0].session_key)
-  }, [sessions, selectedKey])
+  // Seleciona a corrida mais recente por padrão (rádios mais frescos na hora)
+  // até o usuário escolher outra — derivado, sem efeito (evita o cascading
+  // render do set-state-in-effect).
+  const selectedKey = pickedKey ?? sessions?.[0]?.session_key ?? null
+  const setSelectedKey = setPickedKey
 
   const selectedSession = sessions?.find(s => s.session_key === selectedKey)
   const seasonLabel = sessions?.[0]?.date_start
