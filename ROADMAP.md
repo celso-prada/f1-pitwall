@@ -54,7 +54,10 @@ reais (sem mock), PT-BR, publicada no Vercel.
 - [ ] **4.1 Telemetria pós-sessão pelo arquivo oficial** (verificar se
   `CarData.z`/`Position.z` ficam acessíveis no estático após a sessão → telemetria
   de todos + mapa de pista, sem OpenF1). *Médio; começa com verificação.*
-- [ ] **4.2 Comparação de minisetores e "volta ideal" detalhada.** *Baixo-médio.*
+- [x] **4.2 Comparação de minisetores e "volta ideal" detalhada.** *Baixo-médio.*
+  — feito: `buildIdealComparison` (pura, testada) + tabela no painel de setores
+  do /live: por piloto, S1/S2/S3 pessoais, volta ideal (soma) vs. melhor real e
+  Δ (tempo deixado na pista); setor melhor da sessão em roxo, menor Δ em verde.
 - [ ] **4.3 Gráficos de delta volta-a-volta e degradação de pneu.** *Médio.*
 
 ## 5. Inteligência / IA como analista

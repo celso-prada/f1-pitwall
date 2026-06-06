@@ -197,6 +197,31 @@ function fmtSec(v) {
   const s = (v % 60).toFixed(3).padStart(6, '0')
   return m > 0 ? `${m}:${s}` : s
 }
+// Comparação detalhada de volta ideal (ROADMAP 4.2). Para cada piloto: os 3
+// melhores setores PESSOAIS, a volta ideal (soma deles), a melhor volta real e o
+// delta (quanto está deixando na pista = melhor − ideal, sempre ≥ 0). Ordena
+// pela volta ideal. Tudo derivado do que a torre já tem (bestSectors/bestLap).
+export function buildIdealComparison(drivers, limit = 8) {
+  const rows = (drivers ?? []).map(d => {
+    const secs = (d.bestSectors ?? []).slice(0, 3).map(toSec)
+    const haveAll = secs.length === 3 && secs.every(v => v != null)
+    const ideal = haveAll ? secs.reduce((a, b) => a + b, 0) : null
+    const best = toSec(d.bestLap)
+    const delta = ideal != null && best != null ? best - ideal : null
+    return {
+      num: d.num, tla: d.tla, color: d.color,
+      sectors: secs,
+      sectorStrs: secs.map(v => (v != null ? fmtSec(v) : '—')),
+      ideal, best, delta,
+      idealStr: fmtSec(ideal),
+      bestStr: fmtSec(best),
+      deltaStr: delta != null ? `+${delta.toFixed(3)}` : '—',
+    }
+  }).filter(r => r.ideal != null || r.best != null)
+  rows.sort((a, b) => (a.ideal ?? a.best ?? Infinity) - (b.ideal ?? b.best ?? Infinity))
+  return rows.slice(0, limit)
+}
+
 export function computeSessionBests(drivers) {
   const sectorOwners = [null, null, null]
   for (let i = 0; i < 3; i++) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { segTone, trackStatusOf, normalizeLive, computeSessionBests } from './livetiming'
+import { segTone, trackStatusOf, normalizeLive, computeSessionBests, buildIdealComparison } from './livetiming'
 
 describe('segTone', () => {
   it('mapeia códigos de minisetor', () => {
@@ -100,5 +100,39 @@ describe('computeSessionBests', () => {
     const drivers = [{ tla: 'VER', color: '#1', bestSectors: ['28.0', '', '25.0'], bestSpeedST: '0' }]
     const { ideal } = computeSessionBests(drivers)
     expect(ideal).toBe(null)
+  })
+})
+
+describe('buildIdealComparison', () => {
+  it('calcula ideal, delta e ordena pela volta ideal', () => {
+    const drivers = [
+      { num: '44', tla: 'HAM', color: '#2', bestSectors: ['27.5', '31.0', '24.8'], bestLap: '1:23.500' },
+      { num: '1', tla: 'VER', color: '#1', bestSectors: ['28.0', '30.5', '25.0'], bestLap: '1:23.600' },
+    ]
+    const rows = buildIdealComparison(drivers)
+    // VER ideal = 83.5; HAM ideal = 83.3 → HAM primeiro
+    expect(rows[0].tla).toBe('HAM')
+    expect(rows[0].ideal).toBeCloseTo(83.3, 3)
+    // delta = melhor(83.5) - ideal(83.3) = 0.2
+    expect(rows[0].delta).toBeCloseTo(0.2, 3)
+    expect(rows[0].deltaStr).toBe('+0.200')
+    expect(rows[0].idealStr).toBe('1:23.300')
+  })
+  it('inclui piloto sem 3 setores (ideal null) mas com melhor volta', () => {
+    const rows = buildIdealComparison([
+      { num: '11', tla: 'PER', color: '#1', bestSectors: ['28.0', '', '25.0'], bestLap: '1:24.000' },
+    ])
+    expect(rows).toHaveLength(1)
+    expect(rows[0].ideal).toBe(null)
+    expect(rows[0].idealStr).toBe('—')
+    expect(rows[0].bestStr).toBe('1:24.000')
+    expect(rows[0].delta).toBe(null)
+  })
+  it('respeita o limite', () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      num: String(i), tla: `D${i}`, color: '#1',
+      bestSectors: ['28.0', '30.0', '25.0'], bestLap: '1:23.000',
+    }))
+    expect(buildIdealComparison(many, 5)).toHaveLength(5)
   })
 })
