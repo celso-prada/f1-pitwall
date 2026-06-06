@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { getDriverStandings, getCalendar } from '../../api/jolpica'
 import { getNextRace } from '../../utils/format'
-import { getLatestSession } from '../../api/openf1'
+import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { askClaude, hasApiKey, setApiKey } from '../../api/claude'
 import { Bot, X, Send, Key, Loader } from 'lucide-react'
 
@@ -95,16 +95,13 @@ export function ChatPanel() {
     staleTime: 3_600_000,
     enabled: open,
   })
-  const { data: session } = useQuery({
-    queryKey: ['latestSession'],
-    queryFn: getLatestSession,
-    staleTime: 60_000,
-    enabled: open,
-  })
+  // Sessão ao vivo via /api/live (feed oficial) — query compartilhada com o
+  // Header, sem custo extra de rede. Dá ao assistente o contexto ao vivo real.
+  const { data: live } = useLiveTiming()
 
   const context = {
     standings,
-    session,
+    session: live?.data?.session ?? null,
     nextRace: races ? getNextRace(races) : null,
   }
 

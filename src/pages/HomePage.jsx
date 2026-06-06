@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar, getLastRaceResults, getDriverStandings } from '../api/jolpica'
-import { getLatestSession } from '../api/openf1'
+import { useLiveTiming } from '../hooks/useLiveTiming'
 import { getNextRace, isToday } from '../utils/format'
 import { getTeamColor } from '../utils/teamColors'
 import { HERO_BG } from '../utils/images'
@@ -19,14 +19,10 @@ import { Radio, Trophy, MapPin, Zap, Newspaper } from 'lucide-react'
 import { useDriverPhotos } from '../hooks/useDriverPhotos'
 import { Skeleton } from '../components/ui/Skeleton'
 
-function LiveEventBanner({ session }) {
+function LiveEventBanner({ live }) {
   const navigate = useNavigate()
-  const now = new Date()
-  const isLive = session &&
-    new Date(session.date_start) <= now &&
-    new Date(session.date_end) >= now
-
-  if (!isLive) return null
+  if (!live?.live || !live.data) return null
+  const s = live.data.session
 
   return (
     <motion.div
@@ -44,7 +40,7 @@ function LiveEventBanner({ session }) {
           <div>
             <div className="text-red-400 text-xs font-black uppercase tracking-widest">Evento ao vivo agora</div>
             <div className="text-white text-lg font-display font-bold uppercase">
-              {session.country_name} · {session.session_name}
+              {s.gp} · {s.name}
             </div>
           </div>
         </div>
@@ -233,7 +229,7 @@ export function HomePage() {
   const { data: races } = useQuery({ queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000 })
   const { data: lastRace, isLoading: lastRaceLoading } = useQuery({ queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000 })
   const { data: standings, isLoading: standingsLoading } = useQuery({ queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000 })
-  const { data: session } = useQuery({ queryKey: ['latestSession'], queryFn: getLatestSession, staleTime: 60_000 })
+  const { data: live } = useLiveTiming()
 
   const photos = useDriverPhotos()
   const nextRace = getNextRace(races ?? [])
@@ -245,7 +241,7 @@ export function HomePage() {
   return (
     <PageShell>
       {/* Live Event Banner */}
-      <LiveEventBanner session={session} />
+      <LiveEventBanner live={live} />
 
       {/* Hero + top info row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

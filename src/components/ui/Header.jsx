@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
-import { getLatestSession } from '../../api/openf1'
+import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { useCountdown } from '../../hooks/useCountdown'
 import { getNextRace, isToday } from '../../utils/format'
 import { TickerBar } from '../live/TickerBar'
@@ -63,19 +63,13 @@ function NextRaceCountdown() {
 }
 
 function LiveSessionBadge() {
-  const { data: session } = useQuery({
-    queryKey: ['latestSession'],
-    queryFn: getLatestSession,
-    staleTime: 60_000,
-  })
-
+  // Usa o feed oficial via /api/live (mesma query da LivePage — dedupada pelo
+  // react-query). Substitui o getLatestSession do OpenF1, que era bloqueado
+  // durante a sessão ao vivo e gerava erros de CORS no console.
+  const { data: live } = useLiveTiming()
   const navigate = useNavigate()
-  const now = new Date()
-  const isLive = session &&
-    new Date(session.date_start) <= now &&
-    new Date(session.date_end) >= now
 
-  if (!isLive) return null
+  if (!live?.live) return null
 
   return (
     <button
