@@ -87,12 +87,15 @@ export async function fetchLiveSnapshot({ timeoutMs = 8000 } = {}) {
 export async function buildLiveResponse() {
   const status = await getStreamingStatus()
   if (status !== 'Available') return { live: false, status, ts: Date.now() }
-  try {
-    const snapshot = await fetchLiveSnapshot()
-    return { live: true, status, snapshot, ts: Date.now() }
-  } catch (err) {
-    // Streaming disse "Available" mas a captura falhou — reporta como não-live
-    // para o cliente cair no fallback (OpenF1/última sessão) sem travar.
-    return { live: false, status, error: String(err?.message || err), ts: Date.now() }
+  // Há sessão ao vivo. A captura pode falhar num cold start (negotiate/WS lento)
+  // — tentamos 2x antes de desistir, para não reportar "não-live" à toa e fazer
+  // o cliente piscar o modo histórico.
+  let lastErr
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const snapshot = await fetchLiveSnapshot()
+      return { live: true, status, snapshot, ts: Date.now() }
+    } catch (err) { lastErr = err }
   }
+  return { live: false, status, error: String(lastErr?.message || lastErr), ts: Date.now() }
 }

@@ -103,12 +103,13 @@ function LiveOfficial({ data }) {
 }
 
 export function LivePage() {
-  const { data: live, isLoading } = useLiveTiming()
+  const { data: live } = useLiveTiming()
 
-  // Enquanto o 1º poll do /api/live não resolve, mostramos um placeholder leve
-  // em vez de cair no HistoricLive — assim o OpenF1 (bloqueado durante o ao
-  // vivo) não é chamado à toa, evitando erros de CORS e um flash de tela.
-  if (isLoading && !live) {
+  // Enquanto o 1º poll do /api/live não resolve (live === undefined), mostramos
+  // um placeholder leve em vez de cair no HistoricLive — assim o OpenF1
+  // (bloqueado durante o ao vivo) só é chamado quando sabemos que NÃO há sessão
+  // ao vivo, evitando erros de CORS e um flash de tela.
+  if (!live) {
     return (
       <div className="w-full max-w-[1800px] mx-auto px-4 lg:px-6 py-10">
         <div className="card p-6 animate-pulse text-text-mute font-display uppercase tracking-widest text-sm">
