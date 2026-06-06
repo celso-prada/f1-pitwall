@@ -105,3 +105,54 @@ export function currentLap(laps) {
   if (!laps?.length) return null
   return laps.reduce((max, l) => Math.max(max, l.lap_number ?? 0), 0) || null
 }
+
+// --- Final classification (OpenF1 /session_result) ---------------------------
+export const QUALI_PART = ['Q1', 'Q2', 'Q3']
+
+// Normaliza o resultado oficial numa lista pronta para exibir. Na quali,
+// `duration` é um array [Q1,Q2,Q3] e o tempo que DEFINE a posição é a última
+// entrada preenchida (P1-10 = Q3, P11-15 = Q2, P16-20 = Q1). Na corrida/sprint
+// é um único tempo total. O gap é calculado em relação ao líder (pole/vencedor).
+export function buildClassification(results) {
+  if (!results?.length) return []
+
+  const rows = results.map(r => {
+    const arr = Array.isArray(r.duration) ? r.duration : null
+    let timeSec = null
+    let partIndex = null
+    if (arr) {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i] != null) { timeSec = arr[i]; partIndex = i; break }
+      }
+    } else if (typeof r.duration === 'number') {
+      timeSec = r.duration
+    }
+    // gap bruto vindo da API (corrida costuma trazer número direto)
+    let rawGap = null
+    if (Array.isArray(r.gap_to_leader)) {
+      for (let i = r.gap_to_leader.length - 1; i >= 0; i--) {
+        if (r.gap_to_leader[i] != null) { rawGap = r.gap_to_leader[i]; break }
+      }
+    } else if (typeof r.gap_to_leader === 'number') {
+      rawGap = r.gap_to_leader
+    }
+    return {
+      position: r.position ?? null,
+      num: r.driver_number,
+      dnf: !!r.dnf, dns: !!r.dns, dsq: !!r.dsq,
+      laps: r.number_of_laps ?? null,
+      timeSec, partIndex, rawGap,
+      isQuali: !!arr,
+    }
+  }).sort((a, b) => (a.position ?? 99) - (b.position ?? 99))
+
+  // Tempo do líder para o gap "até a pole / vencedor".
+  const leadTime = rows.find(r => r.position === 1)?.timeSec ?? rows[0]?.timeSec ?? null
+  for (const r of rows) {
+    if (r.position === 1) { r.gapSec = 0; continue }
+    if (r.timeSec != null && leadTime != null) r.gapSec = r.timeSec - leadTime
+    else if (r.rawGap != null) r.gapSec = r.rawGap
+    else r.gapSec = null
+  }
+  return rows
+}

@@ -11,6 +11,7 @@ import {
   getLaps,
   getStints,
   getSessions,
+  getSessionResult,
   buildCurrentOrder,
   buildLatestIntervals,
   buildCurrentStints,
@@ -108,6 +109,17 @@ export function useLatestLaps(sessionKey, isLive) {
     queryFn: () => getLaps(sessionKey),
     enabled: !!sessionKey,
     refetchInterval: isLive ? LAPS_INTERVAL : false,
+  })
+}
+
+// Official final classification (posição + tempo de cada piloto). Só faz sentido
+// fora do ao vivo — quando a sessão terminou e o resultado foi consolidado.
+export function useSessionResult(sessionKey, enabled = true) {
+  return useQuery({
+    queryKey: ['sessionResult', sessionKey],
+    queryFn: () => getSessionResult(sessionKey),
+    enabled: !!sessionKey && enabled,
+    staleTime: 300_000,
   })
 }
 

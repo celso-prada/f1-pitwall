@@ -6,9 +6,11 @@ import { getDriverStandings } from '../api/jolpica'
 import {
   useLatestSession, useSessionDrivers, useLivePositions, useLiveIntervals,
   useLiveWeather, usePitStops, useRaceControl, useTeamRadio, useStints, useLatestLaps,
+  useSessionResult,
 } from '../hooks/useLiveRace'
-import { deriveTrackStatus, buildLapInfo, currentLap } from '../utils/live'
+import { deriveTrackStatus, buildLapInfo, currentLap, buildClassification } from '../utils/live'
 import { LiveTower } from '../components/live/LiveTower'
+import { ResultTower } from '../components/live/ResultTower'
 import { TrackStatusBanner } from '../components/live/TrackStatusBanner'
 import { WeatherWidget } from '../components/live/WeatherWidget'
 import { RaceControlFeed } from '../components/live/RaceControlFeed'
@@ -90,6 +92,12 @@ export function HistoricLive() {
   const { data: teamRadio }                               = useTeamRadio(sessionKey, isLive)
   const { data: stints }                                  = useStints(sessionKey, isLive)
   const { data: laps }                                    = useLatestLaps(sessionKey, isLive)
+  // Classificação final só fora do ao vivo (durante a sessão usamos a torre viva).
+  const { data: rawResults, isLoading: resultsLoading }   = useSessionResult(sessionKey, !isLive)
+
+  const classification = useMemo(() => buildClassification(rawResults), [rawResults])
+  const hasResults = !isLive && classification.length > 0
+  const isQualiResult = classification.some(r => r.isQuali)
 
   const loading = sessionLoading || driversLoading || posLoading
   const trackStatus = deriveTrackStatus(raceControl)
@@ -135,21 +143,36 @@ export function HistoricLive() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
           <div className="xl:col-span-2 space-y-3">
             <Panel
-              title="Cronometragem"
+              title={hasResults ? 'Classificação Final' : 'Cronometragem'}
               icon={<Activity size={12} aria-hidden />}
-              right={isLive ? <LiveBadge /> : <span className="text-[9px] text-text-mute uppercase tracking-widest">Última sessão</span>}
+              right={isLive
+                ? <LiveBadge />
+                : <span className="text-[9px] text-text-mute uppercase tracking-widest">
+                    {session ? `${session.session_name} · Resultado` : 'Última sessão'}
+                  </span>}
               padding="p-3"
             >
-              <LiveTower
-                positions={positions}
-                drivers={drivers}
-                intervals={intervals}
-                stints={stints}
-                lapInfo={lapInfo}
-                loading={loading}
-                onSelectDriver={setSelectedDriver}
-                selectedDriver={selectedDriver}
-              />
+              {hasResults ? (
+                <ResultTower
+                  rows={classification}
+                  drivers={drivers}
+                  loading={loading || resultsLoading}
+                  isQuali={isQualiResult}
+                  onSelectDriver={setSelectedDriver}
+                  selectedDriver={selectedDriver}
+                />
+              ) : (
+                <LiveTower
+                  positions={positions}
+                  drivers={drivers}
+                  intervals={intervals}
+                  stints={stints}
+                  lapInfo={lapInfo}
+                  loading={loading}
+                  onSelectDriver={setSelectedDriver}
+                  selectedDriver={selectedDriver}
+                />
+              )}
             </Panel>
 
             {selectedDriver && (

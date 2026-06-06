@@ -63,6 +63,13 @@ export async function getStints(sessionKey = 'latest') {
   return get(`/stints?session_key=${sessionKey}`)
 }
 
+// Final classification of a session (official result). For qualifying each row's
+// `duration`/`gap_to_leader` is an array [Q1,Q2,Q3]; for race/sprint it is a
+// single total-time / gap number. Includes dnf/dns/dsq flags and lap count.
+export async function getSessionResult(sessionKey = 'latest') {
+  return get(`/session_result?session_key=${sessionKey}`)
+}
+
 export async function getSessions(year = new Date().getFullYear()) {
   return get(`/sessions?year=${year}`)
 }
