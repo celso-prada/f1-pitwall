@@ -5,7 +5,7 @@ import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { useCountdown } from '../../hooks/useCountdown'
 import { getNextRace, isToday, countdownUnits } from '../../utils/format'
 import { TickerBar } from '../live/TickerBar'
-import { Radio, BarChart2, Calendar, Home, Headphones, Gauge } from 'lucide-react'
+import { Radio, BarChart2, Calendar, Home, Headphones, Gauge, Activity } from 'lucide-react'
 
 function CountdownUnit({ value, label }) {
   return (
@@ -162,6 +162,18 @@ export function Header() {
             <div className="flex-1" />
             <LiveSessionBadge />
             <NextRaceCountdown />
+            {/* Saúde das fontes — link discreto, desktop only (o menu mobile já
+                está cheio com 6 itens). */}
+            <button
+              onClick={() => navigate('/status')}
+              aria-current={isActive('/status') ? 'page' : undefined}
+              aria-label="Saúde das fontes"
+              title="Saúde das fontes"
+              className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[#141414]"
+              style={{ color: isActive('/status') ? 'var(--color-f1)' : 'var(--color-text-mute)' }}
+            >
+              <Activity size={15} strokeWidth={1.9} aria-hidden />
+            </button>
             <span className="text-[9px] text-text-mute opacity-40 tracking-widest select-none pl-2">by Celso Prada</span>
           </div>
 

@@ -57,11 +57,17 @@ reais (sem mock), PT-BR, publicada no Vercel.
 - [ ] **6.3 Enriquecer páginas de piloto/equipe** (estender uso da Wikipedia). *Baixo-médio.*
 
 ## 7. Engenharia & performance
-- [ ] **7.1 Code-splitting por rota** (bundle ~932KB; lazy-load de
-  `/live`, `/telemetria`, Recharts). *Baixo-médio, ganho imediato.*
+- [x] **7.1 Code-splitting por rota** (bundle ~932KB; lazy-load de
+  `/live`, `/telemetria`, Recharts). *Baixo-médio, ganho imediato.* — feito:
+  rotas via `lazy()`+`Suspense` (Home eager), Recharts/framer-motion em chunks
+  próprios. Entry caiu para ~287KB (gzip 90KB); Recharts (366KB) só carrega nas
+  rotas de gráfico.
 - [ ] **7.2 Testes das funções puras** (`normalizeLive`, `computeSessionBests`,
   `deriveTrackStatus`, parsers). *Baixo.*
-- [ ] **7.3 Endpoint de saúde das fontes** (status de cada upstream). *Baixo.*
+- [x] **7.3 Endpoint de saúde das fontes** (status de cada upstream). *Baixo.* —
+  feito: `/api/health` (core `_health.mjs`, também servido em dev pelo Vite)
+  pinga as 7 fontes em paralelo; página `/status` (link discreto no header)
+  mostra estado + latência de cada uma.
 
 ## Sequência recomendada
 1. 1.1 fotos + 7.1 code-splitting (fecham pontas, ganho imediato).
