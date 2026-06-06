@@ -7,6 +7,8 @@ import {
   currentLap,
   buildClassification,
   tyreOf,
+  classifyPenalty,
+  extractPenalties,
   TRACK_STATUS,
 } from './live'
 
@@ -156,5 +158,51 @@ describe('tyreOf', () => {
   it('desconhecido cai no fallback', () => {
     const t = tyreOf('UNOBTAINIUM')
     expect(t.label).toBe('U')
+  })
+})
+
+describe('classifyPenalty', () => {
+  it('classifica punição de tempo', () => {
+    expect(classifyPenalty('CAR 44 (HAM) 5 SECOND PENALTY').type).toBe('Punição de tempo')
+  })
+  it('investigação vira amarelo', () => {
+    const hit = classifyPenalty('CAR 1 (VER) UNDER INVESTIGATION - FORCING ANOTHER DRIVER OFF')
+    expect(hit.type).toBe('Em investigação')
+    expect(hit.tone).toBe('amber')
+  })
+  it('tempo deletado por track limits', () => {
+    expect(classifyPenalty('CAR 16 (LEC) LAP TIME DELETED - TRACK LIMITS').type).toBe('Tempo deletado')
+  })
+  it('sem ação', () => {
+    expect(classifyPenalty('CAR 4 (NOR) NO FURTHER ACTION').type).toBe('Sem ação')
+  })
+  it('mensagem comum não é punição', () => {
+    expect(classifyPenalty('GREEN LIGHT - PIT EXIT OPEN')).toBe(null)
+    expect(classifyPenalty('DRS ENABLED')).toBe(null)
+  })
+})
+
+describe('extractPenalties', () => {
+  it('filtra só decisões e extrai carro + ordena por mais recente', () => {
+    const msgs = [
+      { utc: '2024-01-01T00:00:01Z', message: 'GREEN LIGHT' },
+      { utc: '2024-01-01T00:00:05Z', message: 'CAR 44 (HAM) 5 SECOND PENALTY', lap: 10 },
+      { utc: '2024-01-01T00:00:03Z', message: 'CAR 1 (VER) UNDER INVESTIGATION' },
+    ]
+    const out = extractPenalties(msgs)
+    expect(out).toHaveLength(2)
+    expect(out[0].car).toBe('44') // mais recente primeiro
+    expect(out[0].type).toBe('Punição de tempo')
+    expect(out[0].lap).toBe(10)
+    expect(out[1].car).toBe('1')
+  })
+  it('aceita shape do OpenF1 (date em vez de utc)', () => {
+    const out = extractPenalties([{ date: '2024-01-01T00:00:05Z', message: 'CAR 11 (PER) TIME PENALTY' }])
+    expect(out[0].car).toBe('11')
+    expect(out[0].when).toBe('2024-01-01T00:00:05Z')
+  })
+  it('vazio sem mensagens', () => {
+    expect(extractPenalties([])).toEqual([])
+    expect(extractPenalties(null)).toEqual([])
   })
 })

@@ -34,11 +34,17 @@ reais (sem mock), PT-BR, publicada no Vercel.
   *Médio-alto.*
 - [ ] **2.3 PWA instalável + "Modo TV" (fullscreen).** App de verdade na segunda
   tela, shell offline, tela cheia. *Médio.*
-- [ ] **2.4 Modo "seguir piloto".** Fixar 1–2 pilotos no topo da torre. *Baixo-médio.*
+- [x] **2.4 Modo "seguir piloto".** Fixar 1–2 pilotos no topo da torre. *Baixo-médio.*
+  — feito: hook `useFollowedDrivers` (persistido em localStorage, máx. 2), faixa
+  "Seguindo" no topo da `OfficialTower` + estrela nas linhas; toggle no popup do
+  piloto.
 
 ## 3. Pós-sessão & replay
 - [ ] **3.1 Replay da sessão (timeline scrub)** com o arquivo estático. *Alto.*
-- [ ] **3.2 Decisões dos comissários / penalidades** (de `RaceControlMessages`). *Baixo.*
+- [x] **3.2 Decisões dos comissários / penalidades** (de `RaceControlMessages`). *Baixo.*
+  — feito: `extractPenalties`/`classifyPenalty` (puros, testados) classificam o
+  race control em punição/investigação/advertência/tempo deletado/sem ação;
+  painel `StewardDecisions` no /live (resolve nº do carro → TLA).
 - [ ] **3.3 Resumo automático da sessão (IA, PT-BR).** *Médio.*
 
 ## 4. Telemetria & análise (`/telemetria` existe)

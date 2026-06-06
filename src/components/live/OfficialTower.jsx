@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { Star } from 'lucide-react'
 import { tyreOf, LAP_TONE_COLOR } from '../../utils/live'
 import { MiniSectors } from './MiniSectors'
 
@@ -29,7 +30,7 @@ function lastLapColor(ll) {
   return 'var(--color-text)'
 }
 
-function Row({ d, onSelect, dropZone }) {
+function Row({ d, onSelect, dropZone, isFollowed }) {
   const dim = d.knockedOut || d.retired || d.stopped
   return (
     <motion.button
@@ -46,6 +47,7 @@ function Row({ d, onSelect, dropZone }) {
       {/* Pos + piloto */}
       <span className="flex items-center gap-2 min-w-0">
         <span className="num text-sm font-bold text-text-mute w-5 text-right shrink-0">{d.pos === 999 ? '–' : d.pos}</span>
+        {isFollowed && <Star size={10} className="fill-current shrink-0" style={{ color: 'var(--color-f1)' }} aria-hidden />}
         <span className="font-display font-bold text-sm text-text truncate">{d.tla}</span>
         {d.inPit && <span className="num text-[9px] px-1 rounded bg-amber-500/20 text-amber-400 font-bold shrink-0">BOX</span>}
         {d.pitOut && <span className="num text-[9px] px-1 rounded bg-sky-500/20 text-sky-400 font-bold shrink-0">OUT</span>}
@@ -88,14 +90,34 @@ function cutAfterFor(part) {
   return null
 }
 
-export function OfficialTower({ drivers, part, partLabel, onSelect }) {
+export function OfficialTower({ drivers, part, partLabel, onSelect, followed }) {
   if (!drivers?.length) return <div className="text-text-mute text-sm py-6 text-center">Sem dados de cronometragem.</div>
   const cutAfter = cutAfterFor(part)
+
+  // Pilotos fixados (ROADMAP 2.4): preservam a ordem de tela e aparecem numa
+  // faixa destacada no topo, mesmo que estejam lá embaixo no grid.
+  const followSet = new Set((followed ?? []).map(String))
+  const pinned = followSet.size ? drivers.filter(d => followSet.has(String(d.num))) : []
 
   return (
     // Rolagem horizontal: toque no celular, barra no PC.
     <div className="overflow-x-auto overscroll-x-contain">
       <div className="min-w-[780px]">
+        {pinned.length > 0 && (
+          <div
+            className="mb-1.5 rounded-md p-1"
+            style={{ background: 'rgba(225,6,0,0.05)', border: '1px solid rgba(225,6,0,0.18)' }}
+          >
+            <div className="flex items-center gap-1.5 px-2 pt-0.5 pb-1">
+              <Star size={10} className="fill-current" style={{ color: 'var(--color-f1)' }} aria-hidden />
+              <span className="num text-[9px] uppercase tracking-widest font-bold" style={{ color: 'var(--color-f1)' }}>
+                Seguindo
+              </span>
+            </div>
+            {pinned.map(d => <Row key={`pin-${d.num}`} d={d} onSelect={onSelect} />)}
+          </div>
+        )}
+
         {/* Cabeçalho de colunas */}
         <div className={`${GRID} px-2 pb-1.5 mb-1 border-b border-white/5 text-[9px] uppercase tracking-widest text-text-mute font-semibold`}>
           <span>Piloto</span>
@@ -111,7 +133,7 @@ export function OfficialTower({ drivers, part, partLabel, onSelect }) {
         <AnimatePresence initial={false}>
           {drivers.map(d => (
             <div key={d.num}>
-              <Row d={d} onSelect={onSelect} dropZone={cutAfter != null && d.pos > cutAfter} />
+              <Row d={d} onSelect={onSelect} dropZone={cutAfter != null && d.pos > cutAfter} isFollowed={followSet.has(String(d.num))} />
               {cutAfter != null && d.pos === cutAfter && (
                 <div className="flex items-center gap-2 my-1 px-2 select-none">
                   <span className="h-px flex-1 bg-red-500/40" />

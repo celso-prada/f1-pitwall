@@ -106,6 +106,52 @@ export function currentLap(laps) {
   return laps.reduce((max, l) => Math.max(max, l.lap_number ?? 0), 0) || null
 }
 
+// --- Decisões dos comissários / penalidades (ROADMAP 3.2) -------------------
+// Extrai do log de race control as mensagens que são decisão de comissário
+// (punições, investigações, advertências, tempos deletados). Fonte é o mesmo
+// RaceControlMessages que já temos — sem nova dependência. Cada item recebe um
+// `type` em PT-BR e, quando dá, o número do carro envolvido (mensagens vêm como
+// "CAR 44 (HAM) ..."). Aceita tanto o shape normalizado do feed oficial
+// ({ utc, message }) quanto o do OpenF1 ({ date, message }).
+const PENALTY_RULES = [
+  { type: 'Punição de tempo', tone: 'red',    re: /TIME PENALTY|\d+\s*SECOND(S)?\s+PENALTY/ },
+  { type: 'Drive-through',    tone: 'red',    re: /DRIVE[-\s]?THROUGH/ },
+  { type: 'Stop & go',        tone: 'red',    re: /STOP\s*(AND|\/|&)?\s*GO/ },
+  { type: 'Punição de grid',  tone: 'red',    re: /GRID (PENALTY|DROP|POSITION)/ },
+  { type: 'Tempo deletado',   tone: 'amber',  re: /LAP TIME DELETED|DELETED|TRACK LIMITS/ },
+  { type: 'Em investigação',  tone: 'amber',  re: /UNDER INVESTIGATION|WILL BE INVESTIGATED|NOTED|UNSAFE RELEASE/ },
+  { type: 'Reprimenda',       tone: 'amber',  re: /REPRIMAND/ },
+  { type: 'Advertência',      tone: 'amber',  re: /BLACK AND WHITE|WARNING/ },
+  { type: 'Sem ação',         tone: 'green',  re: /NO FURTHER (ACTION|INVESTIGATION)|NO ACTION|REINSTATED|REVIEWED.*NO/ },
+  { type: 'Punição',          tone: 'red',    re: /PENALTY/ }, // genérico, por último
+]
+
+export function classifyPenalty(message) {
+  const text = String(message ?? '').toUpperCase()
+  for (const rule of PENALTY_RULES) if (rule.re.test(text)) return { type: rule.type, tone: rule.tone }
+  return null
+}
+
+export function extractPenalties(messages) {
+  if (!messages?.length) return []
+  return messages
+    .map(m => {
+      const hit = classifyPenalty(m.message)
+      if (!hit) return null
+      const carMatch = /CAR\s+(\d+)/.exec(String(m.message ?? '').toUpperCase())
+      return {
+        when: m.utc ?? m.date ?? null,
+        message: m.message,
+        type: hit.type,
+        tone: hit.tone,
+        car: carMatch ? carMatch[1] : null,
+        lap: m.lap ?? null,
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.when) - new Date(a.when))
+}
+
 // --- Final classification (OpenF1 /session_result) ---------------------------
 export const QUALI_PART = ['Q1', 'Q2', 'Q3']
 

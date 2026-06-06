@@ -5,10 +5,12 @@ import { useQuery } from '@tanstack/react-query'
 import { PITWALL_BG } from '../utils/images'
 import { getDriverStandings } from '../api/jolpica'
 import { useLiveTiming } from '../hooks/useLiveTiming'
+import { useFollowedDrivers } from '../hooks/useFollowedDrivers'
 import { LiveSessionBar } from '../components/live/LiveSessionBar'
 import { OfficialTower } from '../components/live/OfficialTower'
 import { LiveConditions } from '../components/live/LiveConditions'
 import { LiveRaceControl } from '../components/live/LiveRaceControl'
+import { StewardDecisions } from '../components/live/StewardDecisions'
 import { LiveRadio } from '../components/live/LiveRadio'
 import { BestSectorsPanel } from '../components/live/BestSectorsPanel'
 import { PositionChart } from '../components/live/PositionChart'
@@ -16,9 +18,9 @@ import { ChampionshipPanel } from '../components/live/ChampionshipPanel'
 import { HistoricLive } from './HistoricLive'
 import { NewsFeed } from '../components/news/NewsFeed'
 import { Panel } from '../components/ui/Panel'
-import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy } from 'lucide-react'
+import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy, Gavel, Star } from 'lucide-react'
 
-function DriverQuickInfo({ d, profileId, onClose, navigate }) {
+function DriverQuickInfo({ d, profileId, onClose, navigate, isFollowed, onToggleFollow }) {
   if (!d) return null
   return (
     <motion.div
@@ -34,14 +36,30 @@ function DriverQuickInfo({ d, profileId, onClose, navigate }) {
           <div className="num text-xs text-text-mute">#{d.num}</div>
         </div>
       </div>
-      <button
-        onClick={() => profileId && navigate(`/driver/${profileId}`)}
-        disabled={!profileId}
-        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{ background: d.color + '18', color: d.color, border: `1px solid ${d.color}28` }}
-      >
-        Ver perfil completo <ChevronRight size={12} className="ml-auto" aria-hidden />
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => profileId && navigate(`/driver/${profileId}`)}
+          disabled={!profileId}
+          className="flex items-center gap-2 flex-1 px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ background: d.color + '18', color: d.color, border: `1px solid ${d.color}28` }}
+        >
+          Ver perfil completo <ChevronRight size={12} className="ml-auto" aria-hidden />
+        </button>
+        <button
+          onClick={() => onToggleFollow?.(d.num)}
+          aria-pressed={isFollowed}
+          title={isFollowed ? 'Deixar de seguir' : 'Fixar no topo da torre'}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold shrink-0 transition-colors"
+          style={{
+            background: isFollowed ? 'rgba(225,6,0,0.12)' : 'var(--color-surface-2)',
+            color: isFollowed ? 'var(--color-f1)' : 'var(--color-text-dim)',
+            border: `1px solid ${isFollowed ? 'rgba(225,6,0,0.35)' : 'var(--color-border-strong)'}`,
+          }}
+        >
+          <Star size={13} className={isFollowed ? 'fill-current' : ''} aria-hidden />
+          {isFollowed ? 'Seguindo' : 'Seguir'}
+        </button>
+      </div>
     </motion.div>
   )
 }
@@ -51,6 +69,7 @@ function DriverQuickInfo({ d, profileId, onClose, navigate }) {
 function LiveOfficial({ data }) {
   const navigate = useNavigate()
   const [selected, setSelected] = useState(null)
+  const { followed, toggle: toggleFollow, isFollowed } = useFollowedDrivers()
   const isRace = data.session.lap != null || data.session.type === 'Race'
 
   // O perfil (/driver/:id) usa o driverId da Jolpica (ex.: "norris"), não o TLA.
@@ -79,10 +98,19 @@ function LiveOfficial({ data }) {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
           <div className="xl:col-span-2 space-y-3">
             <Panel title="Cronometragem" icon={<Activity size={12} aria-hidden />} padding="p-2">
-              <OfficialTower drivers={data.drivers} part={data.session.part} partLabel={data.session.partLabel} onSelect={setSelected} />
+              <OfficialTower drivers={data.drivers} part={data.session.part} partLabel={data.session.partLabel} onSelect={setSelected} followed={followed} />
             </Panel>
             <AnimatePresence>
-              {selected && <DriverQuickInfo d={selected} profileId={selectedProfileId} onClose={() => setSelected(null)} navigate={navigate} />}
+              {selected && (
+                <DriverQuickInfo
+                  d={selected}
+                  profileId={selectedProfileId}
+                  onClose={() => setSelected(null)}
+                  navigate={navigate}
+                  isFollowed={isFollowed(selected.num)}
+                  onToggleFollow={toggleFollow}
+                />
+              )}
             </AnimatePresence>
 
             <Panel title="Melhores Setores · Volta Ideal" icon={<Timer size={12} aria-hidden />} padding="p-3">
@@ -107,6 +135,9 @@ function LiveOfficial({ data }) {
             )}
             <Panel title="Race Control" icon={<Radio size={12} aria-hidden />} padding="p-3">
               <LiveRaceControl messages={data.raceControl} />
+            </Panel>
+            <Panel title="Comissários · Punições" icon={<Gavel size={12} aria-hidden />} padding="p-3">
+              <StewardDecisions messages={data.raceControl} drivers={data.drivers} />
             </Panel>
             <Panel title="Team Radio" icon={<Radio size={12} aria-hidden />} padding="p-3">
               <LiveRadio captures={data.teamRadio} />
