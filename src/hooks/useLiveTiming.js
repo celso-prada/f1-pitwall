@@ -17,6 +17,7 @@ export function useLiveTiming() {
       status: res?.status,
       error: res?.error,
       ts: res?.ts,
+      recentEvent: res?.recentEvent ?? null,
       data: res?.live ? normalizeLive(res.snapshot) : null,
     }),
   })

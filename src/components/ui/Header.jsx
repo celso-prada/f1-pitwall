@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
 import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { useCountdown } from '../../hooks/useCountdown'
-import { getNextRace, isToday } from '../../utils/format'
+import { getNextRace, isToday, countdownUnits } from '../../utils/format'
 import { TickerBar } from '../live/TickerBar'
 import { Radio, BarChart2, Calendar, Home, Headphones, Gauge } from 'lucide-react'
 
@@ -50,13 +50,12 @@ function NextRaceCountdown() {
       </div>
       <div className="flex items-center gap-1 px-3 py-2 rounded-lg"
         style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border-strong)' }}>
-        <CountdownUnit value={countdown.d} label="d" />
-        <span className="text-text-mute font-bold text-xs num self-center pb-2">:</span>
-        <CountdownUnit value={countdown.h} label="h" />
-        <span className="text-text-mute font-bold text-xs num self-center pb-2">:</span>
-        <CountdownUnit value={countdown.m} label="m" />
-        <span className="text-text-mute font-bold text-xs num self-center pb-2">:</span>
-        <CountdownUnit value={countdown.s} label="s" />
+        {countdownUnits(countdown).map((u, i) => (
+          <div key={u.short} className="flex items-center gap-1">
+            {i > 0 && <span className="text-text-mute font-bold text-xs num self-center pb-2">:</span>}
+            <CountdownUnit value={u.v} label={u.short} />
+          </div>
+        ))}
       </div>
     </button>
   )

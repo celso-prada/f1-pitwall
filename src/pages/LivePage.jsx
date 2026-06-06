@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { PITWALL_BG } from '../utils/images'
+import { getDriverStandings } from '../api/jolpica'
 import { useLiveTiming } from '../hooks/useLiveTiming'
 import { LiveSessionBar } from '../components/live/LiveSessionBar'
 import { OfficialTower } from '../components/live/OfficialTower'
@@ -16,7 +18,7 @@ import { NewsFeed } from '../components/news/NewsFeed'
 import { Panel } from '../components/ui/Panel'
 import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy } from 'lucide-react'
 
-function DriverQuickInfo({ d, onClose, navigate }) {
+function DriverQuickInfo({ d, profileId, onClose, navigate }) {
   if (!d) return null
   return (
     <motion.div
@@ -33,8 +35,9 @@ function DriverQuickInfo({ d, onClose, navigate }) {
         </div>
       </div>
       <button
-        onClick={() => navigate(`/driver/${d.tla?.toLowerCase()}`)}
-        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-semibold"
+        onClick={() => profileId && navigate(`/driver/${profileId}`)}
+        disabled={!profileId}
+        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ background: d.color + '18', color: d.color, border: `1px solid ${d.color}28` }}
       >
         Ver perfil completo <ChevronRight size={12} className="ml-auto" aria-hidden />
@@ -50,6 +53,22 @@ function LiveOfficial({ data }) {
   const [selected, setSelected] = useState(null)
   const isRace = data.session.lap != null || data.session.type === 'Race'
 
+  // O perfil (/driver/:id) usa o driverId da Jolpica (ex.: "norris"), não o TLA.
+  // Resolvemos via standings — o mesmo caminho que a home usa para navegar.
+  const { data: standings } = useQuery({
+    queryKey: ['driverStandings', 'current'],
+    queryFn: () => getDriverStandings('current'),
+    staleTime: 300_000,
+  })
+  const idByCode = useMemo(() => {
+    const m = {}
+    for (const s of standings ?? []) if (s.Driver?.code) m[s.Driver.code] = s.Driver.driverId
+    return m
+  }, [standings])
+  const selectedProfileId = selected
+    ? (idByCode[selected.tla] || selected.lastName?.toLowerCase() || null)
+    : null
+
   return (
     <div className="relative">
       <div className="fixed inset-0 pointer-events-none" style={{ backgroundImage: `url(${PITWALL_BG})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.05, zIndex: 0 }} aria-hidden />
@@ -63,7 +82,7 @@ function LiveOfficial({ data }) {
               <OfficialTower drivers={data.drivers} part={data.session.part} partLabel={data.session.partLabel} onSelect={setSelected} />
             </Panel>
             <AnimatePresence>
-              {selected && <DriverQuickInfo d={selected} onClose={() => setSelected(null)} navigate={navigate} />}
+              {selected && <DriverQuickInfo d={selected} profileId={selectedProfileId} onClose={() => setSelected(null)} navigate={navigate} />}
             </AnimatePresence>
 
             <Panel title="Melhores Setores · Volta Ideal" icon={<Timer size={12} aria-hidden />} padding="p-3">

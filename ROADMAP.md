@@ -1,0 +1,73 @@
+# Roadmap — F1 Pitwall
+
+Plano de evolução do sistema. Objetivo do projeto: uma **mesa de pit wall** para
+fã heavy que assiste ao lado da TV — densa, estilo broadcast/telemetria, dados
+reais (sem mock), PT-BR, publicada no Vercel.
+
+> Princípio que orienta tudo: o **OpenF1 bloqueia durante o ao vivo** (exige
+> chave paga) e tanto ele quanto a Jolpica são instáveis. Já temos a fonte
+> oficial (`signalrcore`) e o **arquivo estático pós-sessão** (`.jsonStream`,
+> que libera quando a sessão acaba). Boa parte do plano é migrar o sistema para
+> essas fontes mais ricas e confiáveis.
+
+## 1. Robustez de dados (fundação) — alta prioridade
+- [ ] **1.1 Fotos dos pilotos pelo feed oficial.** Hoje `useDriverPhotos` usa
+  OpenF1 `/drivers` (quebra no ao vivo). O `/api/live` já traz `HeadshotUrl`;
+  usar o `DriverList` oficial como fonte primária. *Baixo.*
+- [ ] **1.2 Resultados/timing pós-sessão via arquivo oficial.** Após a sessão,
+  baixar `TimingData/TimingAppData/Laps` do estático oficial (sem rate-limit,
+  sem lockout) como fonte primária das sessões recentes; OpenF1/Jolpica viram
+  fallback. *Médio.*
+- [ ] **1.3 Camada de dados unificada + documentada.** Consolidar a estratégia
+  de fallback num resolver por tipo de dado e atualizar `DATA_SOURCES.md`. *Médio.*
+- [ ] **1.4 Error boundaries por painel.** Um widget que falha não apaga a
+  página. *Baixo.*
+
+## 2. Experiência "ao lado da TV" — alto valor
+- [ ] **2.1 Sincronia de atraso (delay).** Atrasar o timing em X s para casar
+  com o atraso da transmissão (como o undercut-f1). *Médio.*
+- [ ] **2.2 Alertas/notificações (PWA push).** Piloto/equipe favoritos: início
+  de sessão, bandeira vermelha/SC, pit, volta mais rápida, eliminação na quali.
+  *Médio-alto.*
+- [ ] **2.3 PWA instalável + "Modo TV" (fullscreen).** App de verdade na segunda
+  tela, shell offline, tela cheia. *Médio.*
+- [ ] **2.4 Modo "seguir piloto".** Fixar 1–2 pilotos no topo da torre. *Baixo-médio.*
+
+## 3. Pós-sessão & replay
+- [ ] **3.1 Replay da sessão (timeline scrub)** com o arquivo estático. *Alto.*
+- [ ] **3.2 Decisões dos comissários / penalidades** (de `RaceControlMessages`). *Baixo.*
+- [ ] **3.3 Resumo automático da sessão (IA, PT-BR).** *Médio.*
+
+## 4. Telemetria & análise (`/telemetria` existe)
+- [ ] **4.1 Telemetria pós-sessão pelo arquivo oficial** (verificar se
+  `CarData.z`/`Position.z` ficam acessíveis no estático após a sessão → telemetria
+  de todos + mapa de pista, sem OpenF1). *Médio; começa com verificação.*
+- [ ] **4.2 Comparação de minisetores e "volta ideal" detalhada.** *Baixo-médio.*
+- [ ] **4.3 Gráficos de delta volta-a-volta e degradação de pneu.** *Médio.*
+
+## 5. Inteligência / IA como analista
+- [ ] **5.1 Chat com contexto ao vivo real** ("quem é mais rápido no S2",
+  "janela de undercut?"). *Médio.*
+- [ ] **5.2 Estratégia ao vivo** — undercut/overcut tracker
+  (`PitLaneTimeCollection` + stints) e janela de pit estimada. *Médio.*
+
+## 6. Conteúdo & histórico
+- [ ] **6.1 Comparação head-to-head de pilotos.** *Médio.*
+- [ ] **6.2 Página de recordes/estatísticas + progressão de campeonato.** *Médio.*
+- [ ] **6.3 Enriquecer páginas de piloto/equipe** (estender uso da Wikipedia). *Baixo-médio.*
+
+## 7. Engenharia & performance
+- [ ] **7.1 Code-splitting por rota** (bundle ~932KB; lazy-load de
+  `/live`, `/telemetria`, Recharts). *Baixo-médio, ganho imediato.*
+- [ ] **7.2 Testes das funções puras** (`normalizeLive`, `computeSessionBests`,
+  `deriveTrackStatus`, parsers). *Baixo.*
+- [ ] **7.3 Endpoint de saúde das fontes** (status de cada upstream). *Baixo.*
+
+## Sequência recomendada
+1. 1.1 fotos + 7.1 code-splitting (fecham pontas, ganho imediato).
+2. 2.1 sincronia de delay + 2.3 PWA (maior impacto no objetivo).
+3. 1.2 + 3.1 arquivo pós-sessão / replay (evolução estrutural + recurso "uau").
+
+## Dependem de verificação primeiro
+- 4.1 / mapa de pista: confere se `Position.z`/`CarData.z` ficam no estático
+  **após** a sessão (no ao vivo não ficam).

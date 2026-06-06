@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar, getLastRaceResults, getDriverStandings } from '../api/jolpica'
 import { useLiveTiming } from '../hooks/useLiveTiming'
-import { getNextRace, isToday } from '../utils/format'
+import { getNextRace, isToday, countdownUnits } from '../utils/format'
 import { getTeamColor } from '../utils/teamColors'
 import { HERO_BG } from '../utils/images'
 import { DRIVER_NAT_CODE } from '../utils/flags'
@@ -21,8 +21,16 @@ import { Skeleton } from '../components/ui/Skeleton'
 
 function LiveEventBanner({ live }) {
   const navigate = useNavigate()
-  if (!live?.live || !live.data) return null
-  const s = live.data.session
+
+  // Dois estados: transmitindo agora ("Evento ao vivo agora") ou um evento que
+  // terminou há pouco no fim de semana ("Último evento ao vivo"). Em ambos o
+  // clique leva ao /live (que mostra os últimos dados disponíveis).
+  const isLive = live?.live && live?.data
+  const recent = !isLive ? live?.recentEvent : null
+  if (!isLive && !recent) return null
+
+  const label = isLive ? 'Evento ao vivo agora' : 'Último evento ao vivo'
+  const title = isLive ? `${live.data.session.gp} · ${live.data.session.name}` : `${recent.gp} · ${recent.name}`
 
   return (
     <motion.div
@@ -36,11 +44,11 @@ function LiveEventBanner({ live }) {
         style={{ background: 'radial-gradient(ellipse at center, #e10600, transparent 60%)' }} />
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-red-500 live-dot" />
+          <div className={`w-3 h-3 rounded-full bg-red-500 ${isLive ? 'live-dot' : ''}`} />
           <div>
-            <div className="text-red-400 text-xs font-black uppercase tracking-widest">Evento ao vivo agora</div>
+            <div className="text-red-400 text-xs font-black uppercase tracking-widest">{label}</div>
             <div className="text-white text-lg font-display font-bold uppercase">
-              {s.gp} · {s.name}
+              {title}
             </div>
           </div>
         </div>
@@ -60,10 +68,12 @@ function LiveEventBanner({ live }) {
 function HeroCountdown({ raceDateTime, raceName, raceLocation, circuitId, isRaceDay }) {
   const navigate = useNavigate()
   const countdown = useCountdown(raceDateTime)
-  if (!countdown) return null
+  const units = countdownUnits(countdown)
+  // Sem countdown = horário de largada chegou → o contador vira o botão ao vivo.
+  const reachedStart = !countdown
 
   const handleClick = () => {
-    if (isRaceDay) navigate('/live')
+    if (isRaceDay || reachedStart) navigate('/live')
     else navigate(`/circuit/${circuitId}`)
   }
 
@@ -79,39 +89,48 @@ function HeroCountdown({ raceDateTime, raceName, raceLocation, circuitId, isRace
           <MapPin size={10} aria-hidden />{raceLocation}
         </p>
       )}
-      <div className="flex items-center justify-center gap-4">
-        {[
-          { v: countdown.d, l: 'Dias' },
-          { v: countdown.h, l: 'Horas' },
-          { v: countdown.m, l: 'Min' },
-          { v: countdown.s, l: 'Seg' },
-        ].map(({ v, l }, i) => (
-          <div key={l} className="flex items-center gap-4">
-            {i > 0 && <span className="num text-text-mute text-3xl font-bold self-start mt-1">:</span>}
-            <div className="flex flex-col items-center">
-              <motion.div
-                key={v}
-                initial={{ y: -6, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="num text-5xl font-bold text-text tabular-nums leading-none"
-              >
-                {String(v).padStart(2, '0')}
-              </motion.div>
-              <span className="text-[9px] text-text-mute uppercase tracking-widest mt-1.5">{l}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-8">
+
+      {reachedStart ? (
         <button
-          onClick={handleClick}
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95"
+          onClick={(e) => { e.stopPropagation(); navigate('/live') }}
+          className="inline-flex items-center gap-2 px-7 py-3 rounded-full font-bold text-base transition-all hover:scale-105 active:scale-95"
           style={{ background: 'var(--color-f1)', color: 'white' }}
         >
-          <Radio size={15} aria-hidden />
-          {isRaceDay ? 'Acompanhar ao Vivo' : 'Ver Circuito'}
+          <span className="w-2 h-2 rounded-full bg-white live-dot" />
+          <Radio size={17} aria-hidden /> AO VIVO AGORA
         </button>
-      </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-center gap-4">
+            {units.map(({ v, label }, i) => (
+              <div key={label} className="flex items-center gap-4">
+                {i > 0 && <span className="num text-text-mute text-3xl font-bold self-start mt-1">:</span>}
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    key={v}
+                    initial={{ y: -6, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="num text-5xl font-bold text-text tabular-nums leading-none"
+                  >
+                    {String(v).padStart(2, '0')}
+                  </motion.div>
+                  <span className="text-[9px] text-text-mute uppercase tracking-widest mt-1.5">{label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8">
+            <button
+              onClick={handleClick}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95"
+              style={{ background: 'var(--color-f1)', color: 'white' }}
+            >
+              <Radio size={15} aria-hidden />
+              {isRaceDay ? 'Acompanhar ao Vivo' : 'Ver Circuito'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -56,9 +56,27 @@ export function getCountdown(dateStr) {
   return { d, h, m, s, diff }
 }
 
+// Unidades visíveis do countdown: descarta as unidades-zero do topo
+// (dias → horas → min → seg), mantendo sempre ao menos os segundos. Assim,
+// faltando 0 dias mostra h:m:s; faltando 0 horas mostra m:s; no fim, só seg.
+export function countdownUnits(c) {
+  if (!c) return []
+  const units = [
+    { v: c.d, label: 'Dias', short: 'd' },
+    { v: c.h, label: 'Horas', short: 'h' },
+    { v: c.m, label: 'Min', short: 'm' },
+    { v: c.s, label: 'Seg', short: 's' },
+  ]
+  let start = 0
+  while (start < units.length - 1 && units[start].v === 0) start++
+  return units.slice(start)
+}
+
 export function getNextRace(races) {
-  const now = new Date()
-  return races.find(r => new Date(r.date) >= now) ?? races.at(-1)
+  const now = Date.now()
+  // A corrida continua sendo "a próxima" até o horário REAL de largada (não só
+  // até a meia-noite do dia), para o countdown poder chegar a zero no dia.
+  return races.find(r => new Date(`${r.date}T${r.time ?? '23:59:59'}`).getTime() >= now) ?? races.at(-1)
 }
 
 export function isToday(dateStr) {

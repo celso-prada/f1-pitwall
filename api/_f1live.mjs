@@ -33,6 +33,39 @@ function inflate(b64) {
   catch { return null }
 }
 
+function offsetMs(gmt) {
+  const m = /^(-?)(\d{2}):(\d{2}):(\d{2})/.exec(gmt || '')
+  if (!m) return 0
+  return (m[1] === '-' ? -1 : 1) * ((+m[2]) * 3600 + (+m[3]) * 60 + (+m[4])) * 1000
+}
+
+// Evento ao vivo MAIS RECENTE que já terminou (dentro das últimas 24h) — para o
+// banner "Último evento ao vivo" no fim de semana, quando o feed não está mais
+// transmitindo. Lido do Index.json oficial (datas são wall-clock + GmtOffset).
+const RECENT_WINDOW_MS = 24 * 3600 * 1000
+export async function getRecentEvent() {
+  try {
+    const year = new Date().getFullYear()
+    const r = await fetch(`https://livetiming.formula1.com/static/${year}/Index.json`, {
+      headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000),
+    })
+    if (!r.ok) return null
+    const idx = JSON.parse((await r.text()).replace(/^﻿/, ''))
+    const now = Date.now()
+    let best = null
+    for (const mtg of idx.Meetings ?? []) {
+      for (const s of mtg.Sessions ?? []) {
+        if (!s.EndDate) continue
+        const endUtc = Date.parse(s.EndDate + 'Z') - offsetMs(s.GmtOffset)
+        if (endUtc <= now && now - endUtc <= RECENT_WINDOW_MS) {
+          if (!best || endUtc > best.endUtc) best = { endUtc, gp: mtg.Name, name: s.Name, type: s.Type }
+        }
+      }
+    }
+    return best ? { gp: best.gp, name: best.name, type: best.type } : null
+  } catch { return null }
+}
+
 // Há sessão transmitindo agora? StreamingStatus.json é minúsculo e público.
 export async function getStreamingStatus() {
   try {
@@ -86,7 +119,10 @@ export async function fetchLiveSnapshot({ timeoutMs = 8000 } = {}) {
 // Resposta unificada usada pelos dois handlers (serverless + vite dev).
 export async function buildLiveResponse() {
   const status = await getStreamingStatus()
-  if (status !== 'Available') return { live: false, status, ts: Date.now() }
+  if (status !== 'Available') {
+    const recentEvent = await getRecentEvent()
+    return { live: false, status, recentEvent, ts: Date.now() }
+  }
   // Há sessão ao vivo. A captura pode falhar num cold start (negotiate/WS lento)
   // — tentamos 2x antes de desistir, para não reportar "não-live" à toa e fazer
   // o cliente piscar o modo histórico.
