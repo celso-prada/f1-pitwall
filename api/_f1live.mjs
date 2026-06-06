@@ -66,6 +66,27 @@ export async function getRecentEvent() {
   } catch { return null }
 }
 
+// O StreamingStatus.json fica "grudado" em "Available" mesmo DEPOIS da sessão
+// acabar (a F1 só o reseta horas depois). Então "Available" não basta para
+// afirmar que está ao vivo — é preciso olhar o estado real dentro do snapshot.
+// Uma sessão encerrada se identifica por: SessionStatus = Finalised/Ends, ou
+// SessionInfo.ArchiveStatus = Complete, ou SessionInfo.SessionStatus = Finalised.
+function sessionEnded(snapshot) {
+  const ss = snapshot?.SessionStatus?.Status
+  if (ss === 'Finalised' || ss === 'Ends') return true
+  if (snapshot?.SessionInfo?.ArchiveStatus?.Status === 'Complete') return true
+  if (snapshot?.SessionInfo?.SessionStatus === 'Finalised') return true
+  return false
+}
+
+// Monta o "evento recente" a partir do próprio snapshot (usado quando o feed
+// ainda responde mas a sessão já terminou). Evita um fetch extra ao Index.json.
+function recentFromSnapshot(snapshot) {
+  const si = snapshot?.SessionInfo
+  if (!si) return null
+  return { gp: si.Meeting?.Name, name: si.Name, type: si.Type }
+}
+
 // Há sessão transmitindo agora? StreamingStatus.json é minúsculo e público.
 export async function getStreamingStatus() {
   try {
@@ -130,6 +151,13 @@ export async function buildLiveResponse() {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const snapshot = await fetchLiveSnapshot()
+      // "Available" mas a sessão já terminou (status grudado): trata como
+      // não-live e devolve o evento recente montado do próprio snapshot, para
+      // o banner virar "Último evento ao vivo" em vez de "ao vivo agora".
+      if (sessionEnded(snapshot)) {
+        const recentEvent = recentFromSnapshot(snapshot) ?? await getRecentEvent()
+        return { live: false, status, recentEvent, ts: Date.now() }
+      }
       return { live: true, status, snapshot, ts: Date.now() }
     } catch (err) { lastErr = err }
   }
