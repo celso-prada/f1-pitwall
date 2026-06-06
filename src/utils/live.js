@@ -152,6 +152,55 @@ export function extractPenalties(messages) {
     .sort((a, b) => new Date(b.when) - new Date(a.when))
 }
 
+// --- Estratégia ao vivo: undercut/overcut + janela de pit (ROADMAP 5.2) ------
+// Tudo ESTIMATIVA, a partir do que a torre já tem (pneu, idade, gap ao da
+// frente). Vida típica por composto (voltas) — base só para sinalizar a janela.
+export const TYRE_LIFE = { SOFT: 18, MEDIUM: 28, HARD: 40 }
+
+// "+1.234" / "1,234" → 1.234 · "+1 LAP" / "1L" → null (lapeado, sem undercut).
+export function parseGapSeconds(str) {
+  if (str == null) return null
+  const s = String(str).toUpperCase()
+  if (s.includes('L')) return null
+  const m = s.replace(',', '.').match(/-?\d+(\.\d+)?/)
+  return m ? Math.abs(parseFloat(m[0])) : null
+}
+
+// Janela de pit estimada de um piloto pelo desgaste do composto atual.
+export function pitWindow(d) {
+  const life = TYRE_LIFE[String(d?.tyre ?? '').toUpperCase()]
+  if (!life || d?.tyreAge == null) return null
+  const remaining = life - d.tyreAge
+  const state = remaining <= 0 ? 'over' : remaining <= 5 ? 'window' : 'fresh'
+  return { life, age: d.tyreAge, remaining, state }
+}
+
+// Disputas próximas na pista: pares adjacentes (por posição) dentro de um gap de
+// undercut. Marca DRS (≤1s) e quem TEM a ferramenta do undercut — o de trás, se
+// está com pneu de vida igual/maior (mais gasto), ganha mais parando para pneu novo.
+export function analyzeStrategy(drivers, { undercutGap = 2.5, drsGap = 1.0 } = {}) {
+  const onTrack = (drivers ?? [])
+    .filter(d => d.pos !== 999 && !d.retired && !d.knockedOut && !d.stopped)
+    .sort((a, b) => a.pos - b.pos)
+  const battles = []
+  for (let i = 1; i < onTrack.length; i++) {
+    const ahead = onTrack[i - 1]
+    const behind = onTrack[i]
+    const gap = parseGapSeconds(behind.gapToAhead)
+    if (gap == null || gap > undercutGap) continue
+    const canUndercut = behind.tyreAge != null && ahead.tyreAge != null
+      ? behind.tyreAge >= ahead.tyreAge
+      : null
+    battles.push({
+      pos: behind.pos,
+      ahead: { tla: ahead.tla, color: ahead.color, tyre: ahead.tyre, age: ahead.tyreAge, inPit: !!ahead.inPit },
+      behind: { tla: behind.tla, color: behind.color, tyre: behind.tyre, age: behind.tyreAge, inPit: !!behind.inPit },
+      gap, drs: gap <= drsGap, canUndercut,
+    })
+  }
+  return battles
+}
+
 // --- Final classification (OpenF1 /session_result) ---------------------------
 export const QUALI_PART = ['Q1', 'Q2', 'Q3']
 

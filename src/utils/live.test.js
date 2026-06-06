@@ -9,6 +9,9 @@ import {
   tyreOf,
   classifyPenalty,
   extractPenalties,
+  parseGapSeconds,
+  pitWindow,
+  analyzeStrategy,
   TRACK_STATUS,
 } from './live'
 
@@ -204,5 +207,60 @@ describe('extractPenalties', () => {
   it('vazio sem mensagens', () => {
     expect(extractPenalties([])).toEqual([])
     expect(extractPenalties(null)).toEqual([])
+  })
+})
+
+describe('parseGapSeconds', () => {
+  it('converte gaps numéricos', () => {
+    expect(parseGapSeconds('+1.234')).toBeCloseTo(1.234, 3)
+    expect(parseGapSeconds('0,521')).toBeCloseTo(0.521, 3)
+  })
+  it('null para lapeado e vazio', () => {
+    expect(parseGapSeconds('+1 LAP')).toBe(null)
+    expect(parseGapSeconds('1L')).toBe(null)
+    expect(parseGapSeconds('')).toBe(null)
+    expect(parseGapSeconds(null)).toBe(null)
+  })
+})
+
+describe('pitWindow', () => {
+  it('estado fresco/janela/passou conforme idade', () => {
+    expect(pitWindow({ tyre: 'SOFT', tyreAge: 2 }).state).toBe('fresh')
+    expect(pitWindow({ tyre: 'SOFT', tyreAge: 15 }).state).toBe('window') // 18-15=3
+    expect(pitWindow({ tyre: 'SOFT', tyreAge: 20 }).state).toBe('over')
+  })
+  it('null sem composto conhecido ou sem idade', () => {
+    expect(pitWindow({ tyre: 'INTERMEDIATE', tyreAge: 5 })).toBe(null)
+    expect(pitWindow({ tyre: 'SOFT', tyreAge: null })).toBe(null)
+  })
+})
+
+describe('analyzeStrategy', () => {
+  const drivers = [
+    { pos: 1, tla: 'VER', color: '#1', tyre: 'MEDIUM', tyreAge: 20, gapToAhead: '' },
+    { pos: 2, tla: 'HAM', color: '#2', tyre: 'HARD', tyreAge: 5, gapToAhead: '+1.8' },
+    { pos: 3, tla: 'LEC', color: '#3', tyre: 'MEDIUM', tyreAge: 22, gapToAhead: '+4.0' },
+    { pos: 4, tla: 'NOR', color: '#4', tyre: 'SOFT', tyreAge: 3, gapToAhead: '+0.6' },
+  ]
+  it('lista só pares dentro do gap de undercut', () => {
+    const b = analyzeStrategy(drivers)
+    // HAM↔VER (1.8) e NOR↔LEC (0.6) entram; LEC↔HAM (4.0) não
+    expect(b.map(x => x.behind.tla)).toEqual(['HAM', 'NOR'])
+  })
+  it('marca DRS (≤1s) e a ferramenta de undercut', () => {
+    const b = analyzeStrategy(drivers)
+    const ham = b.find(x => x.behind.tla === 'HAM')
+    expect(ham.drs).toBe(false) // 1.8s
+    expect(ham.canUndercut).toBe(false) // HAM 5v < VER 20v → não ganha parando
+    const nor = b.find(x => x.behind.tla === 'NOR')
+    expect(nor.drs).toBe(true) // 0.6s
+    expect(nor.canUndercut).toBe(false) // NOR 3v < LEC 22v
+  })
+  it('ignora carros parados/retirados', () => {
+    const b = analyzeStrategy([
+      { pos: 1, tla: 'A', tyre: 'SOFT', tyreAge: 5, gapToAhead: '' },
+      { pos: 2, tla: 'B', tyre: 'SOFT', tyreAge: 5, gapToAhead: '+0.5', retired: true },
+    ])
+    expect(b).toEqual([])
   })
 })

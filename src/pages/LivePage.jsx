@@ -15,12 +15,13 @@ import { LiveRaceControl } from '../components/live/LiveRaceControl'
 import { StewardDecisions } from '../components/live/StewardDecisions'
 import { LiveRadio } from '../components/live/LiveRadio'
 import { BestSectorsPanel } from '../components/live/BestSectorsPanel'
+import { StrategyPanel } from '../components/live/StrategyPanel'
 import { PositionChart } from '../components/live/PositionChart'
 import { ChampionshipPanel } from '../components/live/ChampionshipPanel'
 import { HistoricLive } from './HistoricLive'
 import { NewsFeed } from '../components/news/NewsFeed'
 import { Panel } from '../components/ui/Panel'
-import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy, Gavel, Star, Sparkles } from 'lucide-react'
+import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy, Gavel, Star, Sparkles, Swords } from 'lucide-react'
 
 function DriverQuickInfo({ d, profileId, onClose, navigate, isFollowed, onToggleFollow }) {
   if (!d) return null
@@ -118,6 +119,12 @@ function LiveOfficial({ data }) {
             <Panel title="Melhores Setores · Volta Ideal" icon={<Timer size={12} aria-hidden />} padding="p-3">
               <BestSectorsPanel drivers={data.drivers} />
             </Panel>
+
+            {isRace && (
+              <Panel title="Estratégia · Undercut & Pit" icon={<Swords size={12} aria-hidden />} padding="p-3">
+                <StrategyPanel drivers={data.drivers} />
+              </Panel>
+            )}
 
             {isRace && Object.keys(data.lapSeries || {}).length > 0 && (
               <Panel title="Evolução de Posições" icon={<TrendingUp size={12} aria-hidden />} padding="p-3">

@@ -72,8 +72,11 @@ reais (sem mock), PT-BR, publicada no Vercel.
   donos, clima, bandeira, punições — via `buildLiveContext` reusando
   `computeSessionBests`/`extractPenalties`). Sugestões ao vivo + prompt caching
   do system prompt. **Oculto por ora** (gate `AI_ENABLED` em `src/config.js`).
-- [ ] **5.2 Estratégia ao vivo** — undercut/overcut tracker
-  (`PitLaneTimeCollection` + stints) e janela de pit estimada. *Médio.*
+- [x] **5.2 Estratégia ao vivo** — undercut/overcut tracker
+  (`PitLaneTimeCollection` + stints) e janela de pit estimada. *Médio.* — feito:
+  `analyzeStrategy`/`pitWindow`/`parseGapSeconds` (puros, testados) + painel
+  `StrategyPanel` no /live (corrida): disputas ≤2,5s com tag DRS/UNDERCUT e
+  janela de pit por desgaste de pneu. Tudo estimativa, rotulado como tal.
 
 ## 6. Conteúdo & histórico
 - [x] **6.1 Comparação head-to-head de pilotos.** *Médio.* — feito: página
