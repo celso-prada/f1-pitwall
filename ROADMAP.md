@@ -73,7 +73,11 @@ reais (sem mock), PT-BR, publicada no Vercel.
   confronto direto corrida×corrida e quali×quali + pontos/vitórias/pódios/poles/
   melhor result./média/DNFs. Helpers puros `summarizeSeason`/`headToHead`
   (testados); dados via `getDriverResults` (Jolpica→f1api, já redundante).
-- [ ] **6.2 Página de recordes/estatísticas + progressão de campeonato.** *Médio.*
+- [x] **6.2 Página de recordes/estatísticas + progressão de campeonato.** *Médio.*
+  — feito: página `/recordes` (link na Classificação) com cards de superlativos
+  (líder, vantagem, mais vitórias, pilotos pontuando) + gráfico de progressão de
+  pontos acumulados rodada a rodada (top 6). Helpers puros `cumulativePoints`/
+  `buildProgression`/`seasonHighlights` (testados); top-N via `useQueries`.
 - [ ] **6.3 Enriquecer páginas de piloto/equipe** (estender uso da Wikipedia). *Baixo-médio.*
 
 ## 7. Engenharia & performance
