@@ -78,7 +78,10 @@ reais (sem mock), PT-BR, publicada no Vercel.
   (líder, vantagem, mais vitórias, pilotos pontuando) + gráfico de progressão de
   pontos acumulados rodada a rodada (top 6). Helpers puros `cumulativePoints`/
   `buildProgression`/`seasonHighlights` (testados); top-N via `useQueries`.
-- [ ] **6.3 Enriquecer páginas de piloto/equipe** (estender uso da Wikipedia). *Baixo-médio.*
+- [x] **6.3 Enriquecer páginas de piloto/equipe** (estender uso da Wikipedia). *Baixo-médio.*
+  — feito: a página de piloto já tinha foto+bio+stats; faltava a equipe. Agora a
+  `/team` ganha painel "Sobre a Equipe" (extract PT-BR + logo + leia mais) pela
+  mesma rota Wikipedia dos pilotos.
 
 ## 7. Engenharia & performance
 - [x] **7.1 Code-splitting por rota** (bundle ~932KB; lazy-load de

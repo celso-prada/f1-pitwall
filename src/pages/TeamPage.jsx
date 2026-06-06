@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { getConstructorStandings, getConstructorRaces } from '../api/jolpica'
+import { getWikipediaDriverData } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
 import { getCarImage, CARBON_BG } from '../utils/images'
 import { formatDate } from '../utils/format'
@@ -9,7 +10,7 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
 import { Stat } from '../components/ui/Stat'
-import { ArrowLeft, Trophy } from 'lucide-react'
+import { ArrowLeft, Trophy, BookOpen, ExternalLink } from 'lucide-react'
 
 export function TeamPage() {
   const { constructorId } = useParams()
@@ -30,6 +31,15 @@ export function TeamPage() {
   const constructor = standing?.Constructor
   const color       = getTeamColor(constructor?.name)
   const carImageUrl = getCarImage(constructorId)
+
+  // Bio da equipe pela Wikipedia (ROADMAP 6.3) — mesma rota usada nos pilotos
+  // (extract PT-BR + logo). constructor.url é o artigo EN da Ergast/Jolpica.
+  const { data: wikiTeam } = useQuery({
+    queryKey: ['wikiTeam', constructorId],
+    queryFn: () => getWikipediaDriverData(constructor?.url),
+    enabled: !!constructor?.url,
+    staleTime: 86_400_000,
+  })
 
   if (isLoading) {
     return (
@@ -181,6 +191,36 @@ export function TeamPage() {
           </Panel>
         )}
       </div>
+
+      {/* Bio da equipe (Wikipedia) */}
+      {wikiTeam?.extract && (
+        <Panel title="Sobre a Equipe" icon={<BookOpen size={13} aria-hidden />}>
+          <div className="flex flex-col sm:flex-row gap-4 mt-2">
+            {wikiTeam.photo && (
+              <img
+                src={wikiTeam.photo}
+                alt={constructor.name}
+                className="w-full sm:w-40 h-32 object-contain rounded-lg shrink-0 bg-white/5 p-2"
+                onError={e => { e.target.style.display = 'none' }}
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm text-text-dim leading-relaxed">{wikiTeam.extract}</p>
+              {constructor.url && (
+                <a
+                  href={constructor.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs mt-2 hover:underline"
+                  style={{ color }}
+                >
+                  <ExternalLink size={10} aria-hidden /> Leia mais na Wikipedia
+                </a>
+              )}
+            </div>
+          </div>
+        </Panel>
+      )}
     </PageShell>
   )
 }
