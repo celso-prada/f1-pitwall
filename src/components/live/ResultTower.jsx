@@ -40,7 +40,7 @@ function ResultRow({ row, driver, isQuali, onSelect, isSelected }) {
       animate={{ opacity: 1, x: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onClick={() => onSelect(driver)}
-      className="relative flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150 group"
+      className="relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150 group"
       style={{
         background: isSelected ? `${color}18` : 'transparent',
         border: `1px solid ${isSelected ? color + '45' : 'transparent'}`,
@@ -79,7 +79,7 @@ function ResultRow({ row, driver, isQuali, onSelect, isSelected }) {
 
       {/* Quali part that set the time (Q1/Q2/Q3) */}
       {isQuali && (
-        <span className="w-7 text-center text-[8px] font-black uppercase tracking-wider flex-shrink-0"
+        <span className="w-5 text-center text-[8px] font-black uppercase tracking-wider flex-shrink-0"
           style={{ color: row.partIndex === 2 ? '#b14be8' : row.partIndex === 1 ? '#22c55e' : 'var(--color-text-mute)' }}
           title="Fase que definiu o tempo">
           {row.partIndex != null ? QUALI_PART[row.partIndex] : ''}
@@ -87,13 +87,13 @@ function ResultRow({ row, driver, isQuali, onSelect, isSelected }) {
       )}
 
       {/* Determining time */}
-      <div className="num text-[11px] font-bold text-right w-[68px] flex-shrink-0"
+      <div className="num text-[11px] font-bold text-right w-[58px] flex-shrink-0"
         style={{ color: row.position === 1 ? 'var(--color-gold)' : 'var(--color-text)' }} title="Tempo">
         {noTime ? '—' : fmtLap(row.timeSec)}
       </div>
 
       {/* Gap to leader */}
-      <div className="num text-[10px] text-right w-16 flex-shrink-0 text-text-mute" title="Diferença para o líder">
+      <div className="num text-[10px] text-right w-12 flex-shrink-0 text-text-mute" title="Diferença para o líder">
         {row.position === 1 ? (isQuali ? 'POLE' : 'P1')
           : gap != null ? `+${gap.toFixed(3)}` : '—'}
       </div>
@@ -136,16 +136,16 @@ export function ResultTower({ rows, drivers, loading, isQuali, onSelectDriver, s
 
   return (
     <div className="overflow-x-auto overscroll-x-contain">
-      <div className="min-w-[480px]">
+      <div className="min-w-[300px]">
         {/* column header */}
-        <div className="flex items-center gap-2 px-2 pb-1.5 mb-1 text-[8px] uppercase tracking-widest text-text-mute font-bold"
+        <div className="flex items-center gap-1.5 px-2 pb-1.5 mb-1 text-[8px] uppercase tracking-widest text-text-mute font-bold"
           style={{ borderBottom: '1px solid var(--color-border)' }}>
           <span className="w-6 text-center">Pos</span>
           <span className="w-6" />
           <span className="flex-1">Piloto</span>
-          {isQuali && <span className="w-7 text-center">Fase</span>}
-          <span className="w-[68px] text-right">Tempo</span>
-          <span className="w-16 text-right">Gap</span>
+          {isQuali && <span className="w-5 text-center">Fase</span>}
+          <span className="w-[58px] text-right">Tempo</span>
+          <span className="w-12 text-right">Gap</span>
         </div>
 
         <div className="space-y-0.5" role="list" aria-label="Classificação final">
