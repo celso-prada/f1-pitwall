@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Scratch files (mensagem de commit via -F, testes manuais na raiz)
+/_commitmsg.txt
+/_healthtest.mjs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
