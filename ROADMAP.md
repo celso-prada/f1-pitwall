@@ -18,8 +18,12 @@ reais (sem mock), PT-BR, publicada no Vercel.
   baixar `TimingData/TimingAppData/Laps` do estático oficial (sem rate-limit,
   sem lockout) como fonte primária das sessões recentes; OpenF1/Jolpica viram
   fallback. *Médio.*
-- [ ] **1.3 Camada de dados unificada + documentada.** Consolidar a estratégia
+- [x] **1.3 Camada de dados unificada + documentada.** Consolidar a estratégia
   de fallback num resolver por tipo de dado e atualizar `DATA_SOURCES.md`. *Médio.*
+  — feito: `DATA_SOURCES.md` reescrito (tabela por tipo de dado, o resolver
+  `withFallback`, o feed oficial e a verificação do arquivo estático). O resolver
+  já existia consolidado em `withFallback`; documentei em vez de refatorar
+  (mexer no fluxo de dados que funciona = risco que você pediu para evitar).
 - [x] **1.4 Error boundaries por painel.** Um widget que falha não apaga a
   página. *Baixo.* — feito: `ErrorBoundary` embutido no `Panel` (todo painel
   isola sua falha com aviso discreto) + boundary de rota no `App` (key no
@@ -118,5 +122,8 @@ reais (sem mock), PT-BR, publicada no Vercel.
 3. 1.2 + 3.1 arquivo pós-sessão / replay (evolução estrutural + recurso "uau").
 
 ## Dependem de verificação primeiro
-- 4.1 / mapa de pista: confere se `Position.z`/`CarData.z` ficam no estático
-  **após** a sessão (no ao vivo não ficam).
+- 4.1 / mapa de pista: ~~confere se `Position.z`/`CarData.z` ficam no estático
+  **após** a sessão~~ — **VERIFICADO (2026-06): SIM, ficam.** Probe confirmou
+  `CarData.z.jsonStream` (~7,5MB) e `Position.z.jsonStream` (~8MB) acessíveis
+  pós-sessão, além de `TimingData`/`TimingAppData`/`SessionInfo`. Formato e
+  detalhes em `DATA_SOURCES.md`. Implementação de 4.1 (e 1.2/3.1) liberada.

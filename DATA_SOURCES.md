@@ -1,66 +1,89 @@
-# Fontes de dados F1 — status e recursos
+# Fontes de Dados — F1 Pitwall
 
-Testado em 2026-06-01. Status real verificado via curl.
+Mapa de **onde cada tipo de dado vem**, a ordem de **fallback** (redundância) e
+por quê. Princípio: nenhuma fonte é confiável sozinha, então quase tudo tem um
+plano B. Atualize este arquivo ao mexer em qualquer fonte.
 
-## Status das APIs (testado)
+> Substitui o snapshot de status de 2026-06-01. A arquitetura mudou: o ao vivo
+> agora roda sobre o **feed oficial** (não mais OpenF1, que bloqueia ao vivo).
 
-| Fonte | Status hoje | Limite | Tem 2026? |
-|-------|-------------|--------|-----------|
-| **Jolpica** (`api.jolpi.ca`) | ❌ FORA (HTTP 000) | — | sim, quando volta |
-| **f1api.dev** (`f1api.dev/api`) | ✅ no ar (~4s) | livre p/ uso pessoal | ✅ sim |
-| **OpenF1** (`api.openf1.org/v1`) | ✅ no ar (<1s) | 3 req/s, 30 req/min (free) | ✅ sim, com sessões |
-| **TheSportsDB** (`/api/v1/json/123`) | ✅ no ar | 30 req/min (key `123`) | calendário/mídia |
-| **API-Sports** (`v1.formula-1.api-sports.io`) | 🔑 403 sem chave | 100 req/dia | precisa cadastro |
+## Resumo por tipo de dado
 
-## O que cada uma cobre (do que já usamos / queremos)
+| Dado | Fonte primária | Fallback(s) | Onde no código |
+|---|---|---|---|
+| **Ao vivo (timing)** | Feed oficial `signalrcore` (serverless `/api/live`) | — (OpenF1 bloqueia ao vivo) | `api/_f1live.mjs`, `api/live.js`, `src/api/livetiming.js` |
+| **Classificação / calendário / resultados** | Jolpica (Ergast) | f1api.dev | `src/api/jolpica.js` (`withFallback`) |
+| **Resultados por circuito** | Jolpica | Wikipedia (reconstrói vencedores) | `src/api/jolpica.js` + `src/api/wikipedia.js` |
+| **Stats de carreira do piloto** | Jolpica | infobox da Wikipedia | `src/api/jolpica.js`, `src/api/wikipedia.js` |
+| **Foto/bio de piloto e equipe** | Wikipedia (EN foto + PT-BR bio) | foto do feed oficial (`HeadshotUrl`) | `src/api/wikipedia.js`, `src/hooks/useDriverPhotos.js` |
+| **Telemetria pós-sessão** | OpenF1 (`car_data`/`laps`) | arquivo oficial (ver 4.1) | `src/api/telemetry.js` |
+| **Notícias** | Google News / Motorsport via RSS2JSON | — | `src/api/news.js` |
+| **Saúde das fontes** | `/api/health` (probes server-side) | — | `api/_health.mjs`, página `/status` |
 
-### f1api.dev — dados ESTRUTURAIS (já integrado como fallback)
-- `/{season}/drivers-championship` · `/{season}/constructors-championship` — classificações
-- `/{season}` — calendário · `/current/last/race` — última corrida
-- `/{season}/{round}/race` — resultado de corrida (com fastLap, grid, time, retired)
-- `/{season}/{round}/qualy` — Q1/Q2/Q3
-- `/drivers/{id}` — bio · `/{season}/drivers/{id}` — temporada do piloto
-- `/current/drivers`, `/current/teams`, `/circuits` — listas
+## A camada de fallback (o "resolver")
 
-### OpenF1 — dados de PISTA / TEMPO REAL (não integrado ainda)
-- `/meetings?year=2026` — GPs com **imagem do circuito** + **bandeira do país** (URLs media.formula1.com)
-- `/sessions?meeting_key=latest` — treinos/sprint/qualy/corrida com horários
-- `/drivers?session_key=X` — **headshot_url (foto do piloto)** + team_colour oficial
-- `/session_result` — classificação final (posição, pontos, gap, dnf, voltas)
-- `/position` — posição volta a volta (timeline de ultrapassagens)
-- `/stints` — **estratégia de pneus** (composto + stint)
-- `/pit` — paradas (duração)
-- `/weather` — temp ar/pista, chuva, vento, umidade, pressão
-- `/race_control` — bandeiras, SC/VSC, investigações, penalidades
-- `/team_radio` — áudios de rádio (mp3)
-- `/car_data` — telemetria: speed, throttle, brake, rpm, drs, gear
-- `/intervals` — gap ao líder / ao da frente (ao vivo)
-- `/laps` — tempo por volta + setores
+A consolidação da estratégia vive em **`src/api/jolpica.js → withFallback()`**,
+o resolver usado por todas as leituras de dados históricos. Três camadas:
 
-### TheSportsDB — calendário/mídia leve (não integrado)
-- `eventsnextleague.php?id=4370` — próximos eventos da F1 com horário/data
+1. **Breaker aberto** → pula a Jolpica e vai direto ao f1api.dev (instantâneo).
+   A Jolpica fica "marcada como fora" por 10 min (persistido em `localStorage`),
+   então uma queda não faz cada navegação pagar o timeout.
+2. **Breaker fechado** → tenta a Jolpica, mas se ela não responder em
+   `HEDGE_MS` (1,5s), dispara o f1api.dev em paralelo e usa quem terminar antes
+   (preferindo a Jolpica, mais rica, se ela ganhar a corrida).
+3. **Erro da Jolpica** → marca como fora e usa o f1api.dev.
 
-## Recursos que dá pra construir
+Quando o f1api.dev também não cobre (ex.: resultados por circuito), o fallback
+final reconstrói o dado da **Wikipedia**. A página **`/status`** mostra a saúde
+de cada upstream em tempo real.
 
-### A. Visual sem custo (OpenF1 traz imagens prontas)
-1. **Fotos reais dos pilotos** — `headshot_url` resolve o `driver-placeholder.png`. Cobre cards de standings, página do piloto, pódio.
-2. **Bandeiras dos países** por GP — `country_flag` do `/meetings`.
-3. **Cores oficiais de equipe** — `team_colour` do `/drivers` (substitui o map manual em teamColors.js, ou valida).
+## Ao vivo: por que o feed oficial
 
-### B. Pit Wall ao vivo (a página /live ganha vida real)
-4. **Painel de clima** — temp pista/ar, chuva, vento ao vivo (`/weather`).
-5. **Estratégia de pneus** — barra de stints por piloto, composto colorido (`/stints`).
-6. **Race control feed** — bandeiras, safety car, penalidades em tempo real (`/race_control`).
-7. **Gaps ao vivo** — intervalo p/ líder e p/ carro da frente (`/intervals`).
-8. **Posições volta a volta** — gráfico de "battle"/ultrapassagens (`/position`).
-9. **Rádio da equipe** — player dos áudios mais recentes (`/team_radio`).
-10. **Telemetria comparativa** — speed/throttle/brake/gear de 2 pilotos na volta rápida (`/car_data` + `/laps`).
+O **OpenF1 bloqueia o acesso durante a sessão ao vivo** (exige chave paga) e
+tanto ele quanto a Jolpica são instáveis. A única fonte gratuita em tempo real é
+o **feed oficial da F1** (`livetiming.formula1.com/signalrcore`). O browser não
+consegue consumi-lo direto (negotiate sem CORS + a WebSocket API não deixa
+enviar Cookie/headers), então o trabalho roda no servidor: a cada poll, abre o
+SignalR, captura o **snapshot completo** (mensagem `type 3` do `Subscribe`),
+fecha em ~1-2s e devolve JSON ao cliente. Cache de borda curto (`s-maxage=3`)
+faz muitos espectadores compartilharem uma captura. Em dev, o mesmo core é
+servido por um plugin do Vite (não precisa de `vercel dev`).
 
-### C. Resiliência (parte já feita)
-11. Fallback f1api.dev já cobre: standings, calendário, última corrida, **resultado de corrida, qualy, piloto** (commit 190aa20).
-12. **Próximo:** usar OpenF1 `/session_result` como 2ª camada de fallback para resultados (quando Jolpica E f1api falharem), já que é a fonte mais rápida e estável.
+## Arquivo estático oficial (pós-sessão) — VERIFICADO (2026-06)
 
-## Prioridade sugerida
-1. Fotos dos pilotos + bandeiras (impacto visual alto, custo baixo) — OpenF1 estático.
-2. Painel de clima + pneus + race control na /live (transforma o pit wall).
-3. Telemetria comparativa (recurso "wow", mais trabalho).
+Base: `https://livetiming.formula1.com/static/{Path}`, onde `Path` vem do
+`Index.json` do ano (`.../static/{ano}/Index.json`). Após a sessão, os tópicos
+ficam disponíveis como arquivos `*.jsonStream` (sem rate-limit, sem o lockout do
+ao vivo). **Confirmado acessível** (probe na corrida de Abu Dhabi 2025):
+
+| Arquivo | Conteúdo | Tamanho típico |
+|---|---|---|
+| `TimingData.jsonStream` | timing completo: posição, gaps, setores, melhores voltas | ~6,5 MB |
+| `TimingAppData.jsonStream` | stints, pneu, grid | ~95 KB |
+| `TimingDataF1.jsonStream` | timing alternativo | ~4 MB |
+| `SessionInfo.jsonStream` | metadados da sessão | ~2 KB |
+| `CarData.z.jsonStream` | telemetria (speed/throttle/brake/gear/rpm/drs), base64+deflate | ~7,5 MB |
+| `Position.z.jsonStream` | posição X/Y/Z (mapa de pista), base64+deflate | ~8 MB |
+
+- `Laps.jsonStream` retorna **403** — dados de volta vêm dentro do `TimingData`.
+- **Formato:** linhas separadas por `\r\n`, cada uma `HH:MM:SS.mmm{json-delta}`.
+  O estado final é a aplicação em ordem de todos os deltas (mesmo modelo do feed
+  ao vivo), então o parser do `normalizeLive` é reaproveitável após o merge. Os
+  timestamps por linha são a base natural para o **replay** (3.1).
+- **Implicação 4.1:** `CarData.z`/`Position.z` **ficam acessíveis no estático
+  após a sessão** (no ao vivo, não). Logo dá pra ter telemetria de todos +
+  mapa de pista sem depender do OpenF1.
+
+## Referência rápida — OpenF1 (pós-sessão / telemetria)
+
+`api.openf1.org/v1` (3 req/s, 30 req/min no free; bloqueia AO VIVO):
+`/sessions`, `/drivers` (headshot + team_colour), `/session_result`, `/position`,
+`/stints`, `/pit`, `/weather`, `/race_control`, `/team_radio`, `/car_data`,
+`/intervals`, `/laps`. Usado hoje em `/telemetria` e no modo histórico do `/live`.
+
+## Pendências relacionadas (ROADMAP)
+
+- **1.2** — usar `TimingData/TimingAppData` do estático como primária dos
+  resultados pós-sessão (OpenF1/Jolpica viram fallback). Formato já verificado.
+- **4.1** — telemetria pós-sessão pelo `CarData.z`/`Position.z` do estático.
+- **3.1** — replay (timeline scrub) lendo o stream com timestamps por delta.

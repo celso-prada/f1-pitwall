@@ -16,6 +16,7 @@ dist-ssr
 /_commitmsg.txt
 /_healthtest.mjs
 /_geticons.mjs
+/_probe.mjs
 
 # Editor directories and files
 .vscode/*
