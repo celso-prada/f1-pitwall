@@ -1,3 +1,4 @@
 {
+  "functions": { "api/live.js": { "maxDuration": 15 } },
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
