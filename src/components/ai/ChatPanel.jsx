@@ -74,6 +74,14 @@ const SUGGESTIONS = [
   'Compare Hamilton vs Verstappen',
 ]
 
+// Sugestões específicas quando há sessão ao vivo — exploram o contexto rico.
+const LIVE_SUGGESTIONS = [
+  'Quem é mais rápido no setor 2?',
+  'Quem está na janela de undercut?',
+  'Quem tem o pneu mais novo?',
+  'Resuma a sessão agora',
+]
+
 export function ChatPanel() {
   const [open, setOpen]         = useState(false)
   const [messages, setMessages] = useState([])
@@ -99,10 +107,13 @@ export function ChatPanel() {
   // Header, sem custo extra de rede. Dá ao assistente o contexto ao vivo real.
   const { data: live } = useLiveTiming()
 
+  const isLive = !!(live?.live && live.data?.drivers?.length)
   const context = {
     standings,
     session: live?.data?.session ?? null,
     nextRace: races ? getNextRace(races) : null,
+    // Contexto AO VIVO real (cronometragem completa) quando há sessão.
+    live: isLive ? live.data : null,
   }
 
   useEffect(() => {
@@ -191,11 +202,13 @@ export function ChatPanel() {
                           className="text-xs text-text-dim rounded-xl rounded-tl-sm p-3"
                           style={{ background: 'var(--color-surface-2)' }}
                         >
-                          Olá! Sou o PITWALL AI. Pergunte sobre pilotos, corridas, histórico ou o campeonato atual.
+                          {isLive
+                            ? 'Sessão AO VIVO no ar! Posso analisar setores, pneus, gaps e janelas de pit em tempo real.'
+                            : 'Olá! Sou o PITWALL AI. Pergunte sobre pilotos, corridas, histórico ou o campeonato atual.'}
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {SUGGESTIONS.map(s => (
+                        {(isLive ? LIVE_SUGGESTIONS : SUGGESTIONS).map(s => (
                           <button
                             key={s}
                             onClick={() => send(s)}

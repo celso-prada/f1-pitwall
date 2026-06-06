@@ -62,8 +62,13 @@ reais (sem mock), PT-BR, publicada no Vercel.
 - [ ] **4.3 Gráficos de delta volta-a-volta e degradação de pneu.** *Médio.*
 
 ## 5. Inteligência / IA como analista
-- [ ] **5.1 Chat com contexto ao vivo real** ("quem é mais rápido no S2",
-  "janela de undercut?"). *Médio.*
+- [x] **5.1 Chat com contexto ao vivo real** ("quem é mais rápido no S2",
+  "janela de undercut?"). *Médio.* — feito: o PITWALL AI (que estava definido mas
+  NÃO montado) agora é montado global e lazy no `App`. Em sessão ao vivo, recebe
+  a cronometragem completa no contexto (posições, gaps, pneus, melhores setores +
+  donos, clima, bandeira, punições — via `buildLiveContext` reusando
+  `computeSessionBests`/`extractPenalties`). Sugestões ao vivo + prompt caching
+  do system prompt.
 - [ ] **5.2 Estratégia ao vivo** — undercut/overcut tracker
   (`PitLaneTimeCollection` + stints) e janela de pit estimada. *Médio.*
 

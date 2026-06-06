@@ -24,6 +24,8 @@ const TelemetriaPage = lazy(() => import('./pages/TelemetriaPage').then(m => ({ 
 const StatusPage = lazy(() => import('./pages/StatusPage').then(m => ({ default: m.StatusPage })))
 const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })))
 const RecordsPage = lazy(() => import('./pages/RecordsPage').then(m => ({ default: m.RecordsPage })))
+// Widget flutuante global do PITWALL AI (lazy: só baixa quando o app monta ocioso).
+const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then(m => ({ default: m.ChatPanel })))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,6 +125,13 @@ export default function App() {
             </Suspense>
             </RoutedBoundary>
           </main>
+          {/* PITWALL AI — botão flutuante global; com sessão ao vivo, recebe a
+              cronometragem completa como contexto (ROADMAP 5.1). */}
+          <ErrorBoundary label="PITWALL AI" fallback={null}>
+            <Suspense fallback={null}>
+              <ChatPanel />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </BrowserRouter>
     </QueryClientProvider>
