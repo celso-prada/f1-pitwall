@@ -5,7 +5,8 @@ import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { useCountdown } from '../../hooks/useCountdown'
 import { getNextRace, isToday, countdownUnits } from '../../utils/format'
 import { TickerBar } from '../live/TickerBar'
-import { Radio, BarChart2, Calendar, Home, Headphones, Gauge, Activity } from 'lucide-react'
+import { Radio, BarChart2, Calendar, Home, Headphones, Gauge, Activity, Maximize2, Minimize2 } from 'lucide-react'
+import { useFullscreen } from '../../hooks/useFullscreen'
 
 function CountdownUnit({ value, label }) {
   return (
@@ -97,6 +98,7 @@ const NAV = [
 export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { active: fsActive, toggle: toggleFs, supported: fsSupported } = useFullscreen()
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
@@ -162,6 +164,20 @@ export function Header() {
             <div className="flex-1" />
             <LiveSessionBadge />
             <NextRaceCountdown />
+            {/* "Modo TV" — tela cheia na segunda tela. Escondido onde a
+                Fullscreen API não existe (iPhone). */}
+            {fsSupported && (
+              <button
+                onClick={toggleFs}
+                aria-pressed={fsActive}
+                aria-label={fsActive ? 'Sair do modo TV' : 'Modo TV (tela cheia)'}
+                title={fsActive ? 'Sair da tela cheia' : 'Modo TV — tela cheia'}
+                className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[#141414]"
+                style={{ color: fsActive ? 'var(--color-f1)' : 'var(--color-text-mute)' }}
+              >
+                {fsActive ? <Minimize2 size={15} strokeWidth={1.9} aria-hidden /> : <Maximize2 size={15} strokeWidth={1.9} aria-hidden />}
+              </button>
+            )}
             {/* Saúde das fontes — link discreto, desktop only (o menu mobile já
                 está cheio com 6 itens). */}
             <button

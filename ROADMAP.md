@@ -32,8 +32,11 @@ reais (sem mock), PT-BR, publicada no Vercel.
 - [ ] **2.2 Alertas/notificações (PWA push).** Piloto/equipe favoritos: início
   de sessão, bandeira vermelha/SC, pit, volta mais rápida, eliminação na quali.
   *Médio-alto.*
-- [ ] **2.3 PWA instalável + "Modo TV" (fullscreen).** App de verdade na segunda
-  tela, shell offline, tela cheia. *Médio.*
+- [x] **2.3 PWA instalável + "Modo TV" (fullscreen).** App de verdade na segunda
+  tela, shell offline, tela cheia. *Médio.* — feito: `manifest.webmanifest` +
+  ícones (192/512/maskable, gerados via Playwright), service worker à mão
+  (`/api/*` nunca cacheado, navegação network-first, assets cache-first),
+  registro com auto-update, botão "Modo TV" (Fullscreen API) no header.
 - [x] **2.4 Modo "seguir piloto".** Fixar 1–2 pilotos no topo da torre. *Baixo-médio.*
   — feito: hook `useFollowedDrivers` (persistido em localStorage, máx. 2), faixa
   "Seguindo" no topo da `OfficialTower` + estrela nas linhas; toggle no popup do
