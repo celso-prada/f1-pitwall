@@ -29,9 +29,10 @@ reais (sem mock), PT-BR, publicada no Vercel.
 - [~] **2.1 Sincronia de atraso (delay).** ~~Atrasar o timing em X s para casar
   com o atraso da transmissão.~~ **Descartado por decisão do produto (2026-06):**
   o valor do app é justamente ver o ao vivo À FRENTE da TV; manter assim.
-- [ ] **2.2 Alertas/notificações (PWA push).** Piloto/equipe favoritos: início
-  de sessão, bandeira vermelha/SC, pit, volta mais rápida, eliminação na quali.
-  *Médio-alto.*
+- [~] **2.2 Alertas/notificações (PWA push).** ~~Piloto/equipe favoritos: início
+  de sessão, bandeira vermelha/SC, pit, volta mais rápida, eliminação na quali.~~
+  **Adiado por decisão (2026-06):** depende de infra (chaves VAPID + store de
+  inscrições, ex.: Vercel KV) ainda não provisionada. Reabrir quando houver.
 - [x] **2.3 PWA instalável + "Modo TV" (fullscreen).** App de verdade na segunda
   tela, shell offline, tela cheia. *Médio.* — feito: `manifest.webmanifest` +
   ícones (192/512/maskable, gerados via Playwright), service worker à mão
@@ -67,7 +68,11 @@ reais (sem mock), PT-BR, publicada no Vercel.
   (`PitLaneTimeCollection` + stints) e janela de pit estimada. *Médio.*
 
 ## 6. Conteúdo & histórico
-- [ ] **6.1 Comparação head-to-head de pilotos.** *Médio.*
+- [x] **6.1 Comparação head-to-head de pilotos.** *Médio.* — feito: página
+  `/comparar` (link na Classificação) compara 2 pilotos na temporada atual:
+  confronto direto corrida×corrida e quali×quali + pontos/vitórias/pódios/poles/
+  melhor result./média/DNFs. Helpers puros `summarizeSeason`/`headToHead`
+  (testados); dados via `getDriverResults` (Jolpica→f1api, já redundante).
 - [ ] **6.2 Página de recordes/estatísticas + progressão de campeonato.** *Médio.*
 - [ ] **6.3 Enriquecer páginas de piloto/equipe** (estender uso da Wikipedia). *Baixo-médio.*
 

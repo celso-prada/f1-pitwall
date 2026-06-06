@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getDriverStandings } from '../api/jolpica'
 import { DriverStandings } from '../components/standings/DriverStandings'
 import { ConstructorStandings } from '../components/standings/ConstructorStandings'
 import { PageShell } from '../components/ui/PageShell'
-import { Users, Building2 } from 'lucide-react'
+import { Users, Building2, Swords } from 'lucide-react'
 
 export function StandingsPage() {
   const [tab, setTab] = useState('drivers')
+  const navigate = useNavigate()
 
   const { data: standings } = useQuery({
     queryKey: ['driverStandings', 'current'],
@@ -19,7 +21,19 @@ export function StandingsPage() {
   const season = standings?.[0]?.Driver ? standings[0].season ?? 'atual' : 'atual'
 
   return (
-    <PageShell title="Classificação" subtitle={`Temporada ${season}`}>
+    <PageShell
+      title="Classificação"
+      subtitle={`Temporada ${season}`}
+      actions={
+        <button
+          onClick={() => navigate('/comparar')}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-[#1a1a1a]"
+          style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border-strong)', color: 'var(--color-text-dim)' }}
+        >
+          <Swords size={13} aria-hidden /> Head to Head
+        </button>
+      }
+    >
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         {/* Tab selector */}
         <div

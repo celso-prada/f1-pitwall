@@ -22,6 +22,7 @@ const RacePage = lazy(() => import('./pages/RacePage').then(m => ({ default: m.R
 const RadioPage = lazy(() => import('./pages/RadioPage').then(m => ({ default: m.RadioPage })))
 const TelemetriaPage = lazy(() => import('./pages/TelemetriaPage').then(m => ({ default: m.TelemetriaPage })))
 const StatusPage = lazy(() => import('./pages/StatusPage').then(m => ({ default: m.StatusPage })))
+const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,6 +116,7 @@ export default function App() {
                 <Route path="/radio" element={<RadioPage />} />
                 <Route path="/telemetria" element={<TelemetriaPage />} />
                 <Route path="/status" element={<StatusPage />} />
+                <Route path="/comparar" element={<ComparePage />} />
               </Routes>
             </Suspense>
             </RoutedBoundary>
