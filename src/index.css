@@ -55,6 +55,15 @@ body {
 .pb-mobile-nav { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
 @media (min-width: 768px) { .pb-mobile-nav { padding-bottom: 0; } }
 
+/* ─── Pulso "ao vivo" (bloco do hero quando a corrida começa) ────────
+   Glow vermelho que respira suavemente em torno do card inteiro. */
+@keyframes live-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(225, 6, 0, 0.18); }
+  50%      { box-shadow: 0 0 26px 2px rgba(225, 6, 0, 0.42); }
+}
+.live-pulse { animation: live-pulse 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .live-pulse { animation: none; } }
+
 /* ─── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-surface); }

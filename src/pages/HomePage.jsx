@@ -65,12 +65,9 @@ function LiveEventBanner({ live }) {
   )
 }
 
-function HeroCountdown({ raceDateTime, raceName, raceLocation, circuitId, isRaceDay }) {
+function HeroCountdown({ countdown, reachedStart, raceName, raceLocation, circuitId, isRaceDay }) {
   const navigate = useNavigate()
-  const countdown = useCountdown(raceDateTime)
   const units = countdownUnits(countdown)
-  // Sem countdown = horário de largada chegou → o contador vira o botão ao vivo.
-  const reachedStart = !countdown
 
   const handleClick = () => {
     if (isRaceDay || reachedStart) navigate('/live')
@@ -82,7 +79,9 @@ function HeroCountdown({ raceDateTime, raceName, raceLocation, circuitId, isRace
       onClick={handleClick}
       className="w-full flex flex-col items-center justify-center text-center px-4 py-8 relative z-10 cursor-pointer group"
     >
-      <p className="text-[11px] text-text-mute uppercase tracking-widest mb-1">Próxima corrida</p>
+      <p className={`text-[11px] uppercase tracking-widest mb-1 ${reachedStart ? 'text-red-400 font-bold' : 'text-text-mute'}`}>
+        {reachedStart ? 'Corrida ao vivo' : 'Próxima corrida'}
+      </p>
       <h2 className="text-2xl font-display font-bold uppercase tracking-wide text-text mb-1 group-hover:text-red-400 transition-colors">{raceName}</h2>
       {raceLocation && (
         <p className="flex items-center justify-center gap-1 text-[11px] text-text-mute mb-6">
@@ -91,45 +90,37 @@ function HeroCountdown({ raceDateTime, raceName, raceLocation, circuitId, isRace
       )}
 
       {reachedStart ? (
+        // Horário de largada chegou → o card vira a chamada para o ao vivo.
         <button
           onClick={(e) => { e.stopPropagation(); navigate('/live') }}
-          className="inline-flex items-center gap-2 px-7 py-3 rounded-full font-bold text-base transition-all hover:scale-105 active:scale-95"
+          className="inline-flex items-center gap-2.5 px-7 py-3 rounded-full font-bold text-base transition-all hover:scale-105 active:scale-95"
           style={{ background: 'var(--color-f1)', color: 'white' }}
         >
-          <span className="w-2 h-2 rounded-full bg-white live-dot" />
-          <Radio size={17} aria-hidden /> AO VIVO AGORA
+          <span className="w-2.5 h-2.5 rounded-full bg-white live-dot" />
+          <Radio size={17} aria-hidden /> Clique aqui para acompanhar
         </button>
       ) : (
-        <>
-          <div className="flex items-center justify-center gap-4">
-            {units.map(({ v, label }, i) => (
-              <div key={label} className="flex items-center gap-4">
-                {i > 0 && <span className="num text-text-mute text-3xl font-bold self-start mt-1">:</span>}
-                <div className="flex flex-col items-center">
-                  <motion.div
-                    key={v}
-                    initial={{ y: -6, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className="num text-5xl font-bold text-text tabular-nums leading-none"
-                  >
-                    {String(v).padStart(2, '0')}
-                  </motion.div>
-                  <span className="text-[9px] text-text-mute uppercase tracking-widest mt-1.5">{label}</span>
-                </div>
+        // Contagem regressiva. O link para o circuito é o próprio card (onClick
+        // externo) — não há mais botão "Ver Circuito" embaixo (o aviso de ao
+        // vivo fica no banner do topo).
+        <div className="flex items-center justify-center gap-4">
+          {units.map(({ v, label }, i) => (
+            <div key={label} className="flex items-center gap-4">
+              {i > 0 && <span className="num text-text-mute text-3xl font-bold self-start mt-1">:</span>}
+              <div className="flex flex-col items-center">
+                <motion.div
+                  key={v}
+                  initial={{ y: -6, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="num text-5xl font-bold text-text tabular-nums leading-none"
+                >
+                  {String(v).padStart(2, '0')}
+                </motion.div>
+                <span className="text-[9px] text-text-mute uppercase tracking-widest mt-1.5">{label}</span>
               </div>
-            ))}
-          </div>
-          <div className="mt-8">
-            <button
-              onClick={handleClick}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 active:scale-95"
-              style={{ background: 'var(--color-f1)', color: 'white' }}
-            >
-              <Radio size={15} aria-hidden />
-              {isRaceDay ? 'Acompanhar ao Vivo' : 'Ver Circuito'}
-            </button>
-          </div>
-        </>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -257,6 +248,11 @@ export function HomePage() {
   const leader = standings?.[0]
   const heroBg = HERO_BG
 
+  // Countdown elevado para cá para que o card inteiro do hero saiba quando a
+  // corrida começou (pulso ao vivo + chamada). reachedStart = chegou a largada.
+  const countdown = useCountdown(raceDateTime)
+  const reachedStart = !!raceDateTime && !countdown
+
   return (
     <PageShell>
       {/* Live Event Banner */}
@@ -268,7 +264,7 @@ export function HomePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2 relative rounded-2xl overflow-hidden flex items-center justify-center"
+          className={`lg:col-span-2 relative rounded-2xl overflow-hidden flex items-center justify-center ${reachedStart ? 'live-pulse' : ''}`}
           style={{ border: '1px solid rgba(225,6,0,0.15)', minHeight: 200 }}
         >
           <div className="absolute inset-0"
@@ -280,7 +276,8 @@ export function HomePage() {
 
           {nextRace ? (
             <HeroCountdown
-              raceDateTime={raceDateTime}
+              countdown={countdown}
+              reachedStart={reachedStart}
               raceName={nextRace.raceName}
               raceLocation={`${nextRace.Circuit?.Location?.locality}, ${nextRace.Circuit?.Location?.country}`}
               circuitId={nextRace.Circuit?.circuitId}
