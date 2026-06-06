@@ -4,6 +4,7 @@ import { Panel } from '../components/ui/Panel'
 import { Skeleton } from '../components/ui/Skeleton'
 import { TelemetryChart } from '../components/telemetry/TelemetryChart'
 import { PaceChart } from '../components/telemetry/PaceChart'
+import { DeltaChart, DegradationList } from '../components/telemetry/DeltaChart'
 import { LapStatsCard } from '../components/telemetry/LapStatsCard'
 import { getTeamColor } from '../utils/teamColors'
 import { fastestLap, lapStats } from '../api/telemetry'
@@ -147,6 +148,9 @@ export function TelemetriaPage() {
     .filter(n => driverByNum[n])
     .map(n => ({ ...driverByNum[n], laps: lapsByDriver[n] ?? [] }))
 
+  // Par 1 e 2 para o delta volta-a-volta (ROADMAP 4.3).
+  const [deltaA, deltaB] = [a, b].map(n => (n != null && driverByNum[n] ? { ...driverByNum[n], laps: lapsByDriver[n] ?? [] } : null))
+
   if (sessionsLoading) {
     return (
       <div className="w-full max-w-[1800px] mx-auto px-4 lg:px-6 py-6 space-y-4">
@@ -223,6 +227,24 @@ export function TelemetriaPage() {
             ? pairEntries.map(d => <LapStatsCard key={d.number} driver={d} />)
             : <div className="card p-6 text-center text-xs text-neutral-600">Selecione pilotos para ver o resumo</div>}
         </div>
+      </div>
+
+      {/* Delta volta-a-volta + degradação (ROADMAP 4.3) */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Panel title="Delta Volta a Volta — Pilotos 1 e 2" icon={<Timer size={12} aria-hidden />} padding="p-4">
+          <p className="text-[11px] text-neutral-500 leading-snug -mt-1 mb-3">
+            Diferença ACUMULADA de tempo entre os dois primeiros selecionados. A linha subindo = o piloto 1 perdendo
+            para o 2; descendo = o contrário. É como acompanhar a briga ganhar ou perder terreno volta a volta.
+          </p>
+          {lapsLoading ? <Skeleton height={240} rounded={8} /> : <DeltaChart a={deltaA} b={deltaB} />}
+        </Panel>
+        <Panel title="Degradação de Pneu por Stint" icon={<Activity size={12} aria-hidden />} padding="p-4">
+          <p className="text-[11px] text-neutral-500 leading-snug -mt-1 mb-3">
+            Quanto o tempo de volta piora a cada volta dentro de cada stint (relé do pneu). Verde = ritmo firme,
+            vermelho = caindo rápido. Voltas de safety car/tráfego são descartadas.
+          </p>
+          {lapsLoading ? <Skeleton height={120} rounded={8} /> : <DegradationList drivers={paceEntries} />}
+        </Panel>
       </div>
 
       {session && (

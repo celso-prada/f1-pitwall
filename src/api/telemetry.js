@@ -82,6 +82,75 @@ export async function getLapTelemetry(sessionKey, driverNumber, lap) {
 // DRS codes in OpenF1: 0/1 = off, ≥8 = a DRS-open state (8/10/12/14).
 export const drsOn = code => Number(code) >= 8
 
+// --- Delta volta-a-volta + degradação de pneu (ROADMAP 4.3) ------------------
+// Mapa lap_number → lap_duration de voltas "limpas" (sem pit-out / inválidas).
+function cleanLapMap(laps) {
+  const m = new Map()
+  for (const l of laps ?? []) {
+    if (!l.lap_duration || l.lap_duration <= 0 || l.is_pit_out_lap) continue
+    m.set(l.lap_number, l.lap_duration)
+  }
+  return m
+}
+
+// Delta acumulado entre dois pilotos volta a volta. Em cada volta que ambos
+// completaram, soma (durA − durB). Positivo = A está perdendo tempo para B.
+// Só voltas em comum entram, então pit-stops de um não distorcem o outro.
+export function lapDeltaSeries(lapsA, lapsB) {
+  const a = cleanLapMap(lapsA)
+  const b = cleanLapMap(lapsB)
+  const laps = [...a.keys()].filter(n => b.has(n)).sort((x, y) => x - y)
+  let acc = 0
+  const data = []
+  for (const lap of laps) {
+    acc += a.get(lap) - b.get(lap)
+    data.push({ lap, delta: +acc.toFixed(3) })
+  }
+  return data
+}
+
+// Regressão linear simples (mínimos quadrados) → coeficiente angular (s/volta).
+function slope(points) {
+  const n = points.length
+  if (n < 2) return null
+  let sx = 0, sy = 0, sxy = 0, sxx = 0
+  for (const [x, y] of points) { sx += x; sy += y; sxy += x * y; sxx += x * x }
+  const denom = n * sxx - sx * sx
+  if (denom === 0) return null
+  return (n * sxy - sx * sy) / denom
+}
+
+// Quebra as voltas em stints (limites pelo pit-out) e mede a degradação de cada
+// um: a inclinação do tempo de volta ao longo do stint (s/volta). Voltas muito
+// fora do ritmo (SC/tráfego) são descartadas para a tendência não distorcer.
+export function stintDegradation(laps) {
+  const sorted = [...(laps ?? [])].filter(l => l.lap_number != null).sort((a, b) => a.lap_number - b.lap_number)
+  const stints = []
+  let cur = null
+  for (const l of sorted) {
+    if (l.is_pit_out_lap || !cur) { cur = []; stints.push(cur) }
+    if (l.lap_duration > 0 && !l.is_pit_out_lap) cur.push(l)
+  }
+  return stints
+    .map((laps, i) => {
+      const valid = laps.filter(l => l.lap_duration > 0)
+      if (valid.length < 3) return null
+      const min = Math.min(...valid.map(l => l.lap_duration))
+      const kept = valid.filter(l => l.lap_duration <= min + 5) // tira SC/tráfego
+      const pts = kept.map(l => [l.lap_number, l.lap_duration])
+      const deg = slope(pts)
+      if (deg == null) return null
+      return {
+        stint: i + 1,
+        startLap: kept[0].lap_number,
+        endLap: kept.at(-1).lap_number,
+        laps: kept.length,
+        degPerLap: +deg.toFixed(3),
+      }
+    })
+    .filter(Boolean)
+}
+
 // Derived single-lap performance stats for the summary cards.
 export function lapStats(samples) {
   if (!samples?.length) return null

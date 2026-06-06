@@ -62,7 +62,10 @@ reais (sem mock), PT-BR, publicada no Vercel.
   — feito: `buildIdealComparison` (pura, testada) + tabela no painel de setores
   do /live: por piloto, S1/S2/S3 pessoais, volta ideal (soma) vs. melhor real e
   Δ (tempo deixado na pista); setor melhor da sessão em roxo, menor Δ em verde.
-- [ ] **4.3 Gráficos de delta volta-a-volta e degradação de pneu.** *Médio.*
+- [x] **4.3 Gráficos de delta volta-a-volta e degradação de pneu.** *Médio.* —
+  feito na `/telemetria`: `lapDeltaSeries` (delta acumulado entre os pilotos 1 e
+  2) + `stintDegradation` (inclinação s/volta por stint, descartando SC/tráfego),
+  ambos puros e testados; componentes `DeltaChart`/`DegradationList`.
 
 ## 5. Inteligência / IA como analista
 - [x] **5.1 Chat com contexto ao vivo real** ("quem é mais rápido no S2",
