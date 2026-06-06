@@ -61,6 +61,16 @@ export async function askClaude(messages, context = {}) {
   return data.content[0]?.text ?? ''
 }
 
+// Resumo automático da sessão (ROADMAP 3.3). Reaproveita askClaude + o contexto
+// ao vivo: pede um boletim curto de pit wall a partir dos dados reais.
+export async function summarizeSession(live) {
+  const prompt = 'Gere um RESUMO da sessão ao vivo AGORA, em português, em 4 a 6 linhas curtas: '
+    + 'estado da corrida/quali (volta/bandeira), quem lidera e as principais disputas por posição '
+    + '(use os gaps), destaque de ritmo/setores, situação de pneus/estratégia se relevante e '
+    + 'punições importantes. Tom de boletim de pit wall. Não invente nada além do contexto fornecido.'
+  return askClaude([{ role: 'user', content: prompt }], { live })
+}
+
 // `live` é o snapshot normalizado (normalizeLive): { session, drivers[], weather,
 // raceControl, ... }. Quando presente, vira o grosso do contexto.
 function buildContext({ standings, session, nextRace, live }) {

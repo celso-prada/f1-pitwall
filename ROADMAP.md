@@ -49,7 +49,10 @@ reais (sem mock), PT-BR, publicada no Vercel.
   — feito: `extractPenalties`/`classifyPenalty` (puros, testados) classificam o
   race control em punição/investigação/advertência/tempo deletado/sem ação;
   painel `StewardDecisions` no /live (resolve nº do carro → TLA).
-- [ ] **3.3 Resumo automático da sessão (IA, PT-BR).** *Médio.*
+- [x] **3.3 Resumo automático da sessão (IA, PT-BR).** *Médio.* — feito:
+  `summarizeSession` + componente `SessionSummary` (boletim de pit wall sob
+  demanda a partir do snapshot ao vivo). **Oculto por ora** (gate `AI_ENABLED`
+  em `src/config.js`) junto com o chat — código pronto, só não renderiza.
 
 ## 4. Telemetria & análise (`/telemetria` existe)
 - [ ] **4.1 Telemetria pós-sessão pelo arquivo oficial** (verificar se
@@ -68,7 +71,7 @@ reais (sem mock), PT-BR, publicada no Vercel.
   a cronometragem completa no contexto (posições, gaps, pneus, melhores setores +
   donos, clima, bandeira, punições — via `buildLiveContext` reusando
   `computeSessionBests`/`extractPenalties`). Sugestões ao vivo + prompt caching
-  do system prompt.
+  do system prompt. **Oculto por ora** (gate `AI_ENABLED` em `src/config.js`).
 - [ ] **5.2 Estratégia ao vivo** — undercut/overcut tracker
   (`PitLaneTimeCollection` + stints) e janela de pit estimada. *Médio.*
 

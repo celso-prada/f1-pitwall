@@ -4,9 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { PITWALL_BG } from '../utils/images'
 import { getDriverStandings } from '../api/jolpica'
+import { AI_ENABLED } from '../config'
 import { useLiveTiming } from '../hooks/useLiveTiming'
 import { useFollowedDrivers } from '../hooks/useFollowedDrivers'
 import { LiveSessionBar } from '../components/live/LiveSessionBar'
+import { SessionSummary } from '../components/live/SessionSummary'
 import { OfficialTower } from '../components/live/OfficialTower'
 import { LiveConditions } from '../components/live/LiveConditions'
 import { LiveRaceControl } from '../components/live/LiveRaceControl'
@@ -18,7 +20,7 @@ import { ChampionshipPanel } from '../components/live/ChampionshipPanel'
 import { HistoricLive } from './HistoricLive'
 import { NewsFeed } from '../components/news/NewsFeed'
 import { Panel } from '../components/ui/Panel'
-import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy, Gavel, Star } from 'lucide-react'
+import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy, Gavel, Star, Sparkles } from 'lucide-react'
 
 function DriverQuickInfo({ d, profileId, onClose, navigate, isFollowed, onToggleFollow }) {
   if (!d) return null
@@ -125,6 +127,11 @@ function LiveOfficial({ data }) {
           </div>
 
           <div className="xl:col-span-1 space-y-3">
+            {AI_ENABLED && (
+              <Panel title="Resumo da Sessão · IA" icon={<Sparkles size={12} aria-hidden />} padding="p-3">
+                <SessionSummary live={data} />
+              </Panel>
+            )}
             <Panel title="Condições" icon={<Cloud size={12} aria-hidden />} padding="p-3">
               <LiveConditions weather={data.weather} />
             </Panel>

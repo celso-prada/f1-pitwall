@@ -6,6 +6,7 @@ import { Header } from './components/ui/Header'
 import { PageShell } from './components/ui/PageShell'
 import { SkeletonCard } from './components/ui/Skeleton'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { AI_ENABLED } from './config'
 import { HomePage } from './pages/HomePage'
 
 // A Home é eager (é a tela de aterrissagem e pinta na hora do cache). As demais
@@ -126,12 +127,15 @@ export default function App() {
             </RoutedBoundary>
           </main>
           {/* PITWALL AI — botão flutuante global; com sessão ao vivo, recebe a
-              cronometragem completa como contexto (ROADMAP 5.1). */}
-          <ErrorBoundary label="PITWALL AI" fallback={null}>
-            <Suspense fallback={null}>
-              <ChatPanel />
-            </Suspense>
-          </ErrorBoundary>
+              cronometragem completa como contexto (ROADMAP 5.1). Oculto por ora
+              (AI_ENABLED=false): o código fica pronto, só não é montado. */}
+          {AI_ENABLED && (
+            <ErrorBoundary label="PITWALL AI" fallback={null}>
+              <Suspense fallback={null}>
+                <ChatPanel />
+              </Suspense>
+            </ErrorBoundary>
+          )}
         </div>
       </BrowserRouter>
     </QueryClientProvider>
