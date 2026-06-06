@@ -8,10 +8,13 @@ import { OfficialTower } from '../components/live/OfficialTower'
 import { LiveConditions } from '../components/live/LiveConditions'
 import { LiveRaceControl } from '../components/live/LiveRaceControl'
 import { LiveRadio } from '../components/live/LiveRadio'
+import { BestSectorsPanel } from '../components/live/BestSectorsPanel'
+import { PositionChart } from '../components/live/PositionChart'
+import { ChampionshipPanel } from '../components/live/ChampionshipPanel'
 import { HistoricLive } from './HistoricLive'
 import { NewsFeed } from '../components/news/NewsFeed'
 import { Panel } from '../components/ui/Panel'
-import { Activity, Cloud, Radio, Newspaper, ChevronRight } from 'lucide-react'
+import { Activity, Cloud, Radio, Newspaper, ChevronRight, Timer, TrendingUp, Trophy } from 'lucide-react'
 
 function DriverQuickInfo({ d, onClose, navigate }) {
   if (!d) return null
@@ -45,6 +48,7 @@ function DriverQuickInfo({ d, onClose, navigate }) {
 function LiveOfficial({ data }) {
   const navigate = useNavigate()
   const [selected, setSelected] = useState(null)
+  const isRace = data.session.lap != null || data.session.type === 'Race'
 
   return (
     <div className="relative">
@@ -56,17 +60,32 @@ function LiveOfficial({ data }) {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
           <div className="xl:col-span-2 space-y-3">
             <Panel title="Cronometragem" icon={<Activity size={12} aria-hidden />} padding="p-2">
-              <OfficialTower drivers={data.drivers} onSelect={setSelected} />
+              <OfficialTower drivers={data.drivers} part={data.session.part} partLabel={data.session.partLabel} onSelect={setSelected} />
             </Panel>
             <AnimatePresence>
               {selected && <DriverQuickInfo d={selected} onClose={() => setSelected(null)} navigate={navigate} />}
             </AnimatePresence>
+
+            <Panel title="Melhores Setores · Volta Ideal" icon={<Timer size={12} aria-hidden />} padding="p-3">
+              <BestSectorsPanel drivers={data.drivers} />
+            </Panel>
+
+            {isRace && Object.keys(data.lapSeries || {}).length > 0 && (
+              <Panel title="Evolução de Posições" icon={<TrendingUp size={12} aria-hidden />} padding="p-3">
+                <PositionChart lapSeries={data.lapSeries} drivers={data.drivers} />
+              </Panel>
+            )}
           </div>
 
           <div className="xl:col-span-1 space-y-3">
             <Panel title="Condições" icon={<Cloud size={12} aria-hidden />} padding="p-3">
               <LiveConditions weather={data.weather} />
             </Panel>
+            {isRace && data.championship && (
+              <Panel title="Previsão do Campeonato" icon={<Trophy size={12} aria-hidden />} padding="p-3">
+                <ChampionshipPanel championship={data.championship} drivers={data.drivers} />
+              </Panel>
+            )}
             <Panel title="Race Control" icon={<Radio size={12} aria-hidden />} padding="p-3">
               <LiveRaceControl messages={data.raceControl} />
             </Panel>

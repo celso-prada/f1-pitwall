@@ -92,6 +92,7 @@ export function normalizeLive(snapshot) {
         segments: asArray(s.Segments).map(seg => segTone(seg?.Status)),
       })),
       bestSectors: asArray(st.BestSectors).map(b => b?.Value || ''),
+      bestSpeedST: st.BestSpeeds?.ST?.Value || line.Speeds?.ST?.Value || '',
       speedTrap: line.Speeds?.ST?.Value || '',
       speedTrapBest: !!line.Speeds?.ST?.OverallFastest,
       tyre: stint.Compound || null,
@@ -117,6 +118,33 @@ export function normalizeLive(snapshot) {
   const raceControl = asArray(snapshot.RaceControlMessages?.Messages)
     .map(m => ({ utc: m.Utc, message: m.Message, flag: m.Flag, category: m.Category, scope: m.Scope, lap: m.Lap }))
     .sort((a, b) => new Date(b.utc) - new Date(a.utc))
+
+  // Posição volta-a-volta (gráfico de evolução, corrida).
+  const lapSeries = {}
+  const ls = snapshot.LapSeries || {}
+  for (const num of Object.keys(ls)) {
+    if (num === '_kf') continue
+    const arr = asArray(ls[num]?.LapPosition).map(Number).filter(n => !isNaN(n))
+    if (arr.length) lapSeries[num] = arr
+  }
+
+  // Previsão de campeonato (só corrida; shape defensivo — só renderiza se vier).
+  let championship = null
+  const cp = snapshot.ChampionshipPrediction?.Drivers
+  if (cp && typeof cp === 'object') {
+    const rows = Object.values(cp)
+      .filter(d => d && typeof d === 'object' && d.RacingNumber)
+      .map(d => ({
+        num: String(d.RacingNumber),
+        predictedPos: Number(d.PredictedPosition) || null,
+        predictedPoints: d.PredictedPoints != null ? Number(d.PredictedPoints) : null,
+        currentPos: Number(d.CurrentPosition) || null,
+        currentPoints: d.CurrentPoints != null ? Number(d.CurrentPoints) : null,
+      }))
+      .filter(d => d.predictedPoints != null)
+      .sort((a, b) => (a.predictedPos || 99) - (b.predictedPos || 99))
+    if (rows.length) championship = rows
+  }
 
   const radioBase = `https://livetiming.formula1.com/static/${si.Path || ''}`
   const teamRadio = asArray(snapshot.TeamRadio?.Captures)
@@ -150,6 +178,40 @@ export function normalizeLive(snapshot) {
     weather,
     raceControl,
     teamRadio,
+    lapSeries,
+    championship,
     pitTimes: snapshot.PitLaneTimeCollection?.PitTimes || {},
   }
+}
+
+// --- Bests da sessão (dono de cada setor + volta ideal + speed trap) --------
+function toSec(t) {
+  if (!t) return null
+  const [m, s] = t.includes(':') ? t.split(':') : [0, t]
+  const v = parseFloat(m) * 60 + parseFloat(s)
+  return isNaN(v) ? null : v
+}
+function fmtSec(v) {
+  if (v == null) return '—'
+  const m = Math.floor(v / 60)
+  const s = (v % 60).toFixed(3).padStart(6, '0')
+  return m > 0 ? `${m}:${s}` : s
+}
+export function computeSessionBests(drivers) {
+  const sectorOwners = [null, null, null]
+  for (let i = 0; i < 3; i++) {
+    let best = null
+    for (const d of drivers) {
+      const v = toSec(d.bestSectors?.[i])
+      if (v != null && (best == null || v < best.v)) best = { v, tla: d.tla, color: d.color, value: d.bestSectors[i] }
+    }
+    sectorOwners[i] = best
+  }
+  const ideal = sectorOwners.every(s => s) ? fmtSec(sectorOwners.reduce((sum, s) => sum + s.v, 0)) : null
+  const speedTrap = [...drivers]
+    .map(d => ({ tla: d.tla, color: d.color, v: parseInt(d.bestSpeedST, 10) || 0 }))
+    .filter(d => d.v > 0)
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 5)
+  return { sectorOwners, ideal, speedTrap }
 }
