@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getDriverStandings } from '../api/jolpica'
 import {
   useLatestSession, useSessionDrivers, useLivePositions, useLiveIntervals,
   useLiveWeather, usePitStops, useRaceControl, useTeamRadio, useStints, useLatestLaps,
@@ -18,7 +20,7 @@ import { LiveBadge } from '../components/ui/LiveBadge'
 import { Panel } from '../components/ui/Panel'
 import { Radio, Cloud, AlertCircle, Activity, ChevronRight, Layers, Newspaper } from 'lucide-react'
 
-function DriverQuickInfo({ driver, onClose, navigate }) {
+function DriverQuickInfo({ driver, profileId, onClose, navigate }) {
   if (!driver) return null
   const color = driver.team_colour ? `#${driver.team_colour}` : '#666'
 
@@ -54,8 +56,9 @@ function DriverQuickInfo({ driver, onClose, navigate }) {
       </div>
 
       <button
-        onClick={() => navigate(`/driver/${driver.name_acronym?.toLowerCase()}`)}
-        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+        onClick={() => profileId && navigate(`/driver/${profileId}`)}
+        disabled={!profileId}
+        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ background: color + '18', color, border: `1px solid ${color}28` }}
       >
         Ver perfil completo <ChevronRight size={12} className="ml-auto" aria-hidden />
@@ -92,6 +95,23 @@ export function HistoricLive() {
   const trackStatus = deriveTrackStatus(raceControl)
   const lapInfo = buildLapInfo(laps)
   const lapNo = currentLap(laps)
+
+  // O perfil (/driver/:id) usa o driverId da Jolpica (ex.: "norris"), não o TLA
+  // do OpenF1 (ex.: "NOR"). Resolvemos via standings — mesmo caminho da home e
+  // do modo ao vivo oficial.
+  const { data: standings } = useQuery({
+    queryKey: ['driverStandings', 'current'],
+    queryFn: () => getDriverStandings('current'),
+    staleTime: 300_000,
+  })
+  const idByCode = useMemo(() => {
+    const m = {}
+    for (const s of standings ?? []) if (s.Driver?.code) m[s.Driver.code] = s.Driver.driverId
+    return m
+  }, [standings])
+  const selectedProfileId = selectedDriver
+    ? (idByCode[selectedDriver.name_acronym] || selectedDriver.last_name?.toLowerCase() || null)
+    : null
 
   return (
     <div className="relative">
@@ -135,6 +155,7 @@ export function HistoricLive() {
             {selectedDriver && (
               <DriverQuickInfo
                 driver={selectedDriver}
+                profileId={selectedProfileId}
                 onClose={() => setSelectedDriver(null)}
                 navigate={navigate}
               />

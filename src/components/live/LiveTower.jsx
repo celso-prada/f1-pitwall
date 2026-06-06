@@ -109,7 +109,7 @@ function DriverRow({ driver, position, delta, interval, stint, lap, lapInfo, onS
       <Tyre stint={stint} />
 
       {/* Last lap (coloured by tone) */}
-      <div className="num text-[10px] font-semibold text-right w-14 flex-shrink-0 hidden sm:block"
+      <div className="num text-[10px] font-semibold text-right w-14 flex-shrink-0"
         style={{ color: LAP_TONE_COLOR[tone] }} title="Última volta">
         {fmtLap(lap?.lap_duration)}
       </div>
@@ -160,40 +160,44 @@ export function LiveTower({ positions, drivers, intervals, stints, lapInfo, load
   const info = lapInfo ?? { byDriver: {}, sessionBest: null, personalBest: {} }
 
   return (
-    <div>
-      {/* column header — broadcast style */}
-      <div className="flex items-center gap-2 px-2 pb-1.5 mb-1 text-[8px] uppercase tracking-widest text-text-mute font-bold"
-        style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <span className="w-6 text-center">Pos</span>
-        <span className="w-3" />
-        <span className="w-6" />
-        <span className="flex-1">Piloto</span>
-        <span className="w-9">Pneu</span>
-        <span className="w-14 text-right hidden sm:block">Volta</span>
-        <span className="w-16 text-right">Gap / Int</span>
-      </div>
+    // Scroll horizontal: no desktop cabe tudo; no mobile rola para o lado sem
+    // perder colunas (mesmo padrão da torre do feed oficial).
+    <div className="overflow-x-auto overscroll-x-contain">
+      <div className="min-w-[480px]">
+        {/* column header — broadcast style */}
+        <div className="flex items-center gap-2 px-2 pb-1.5 mb-1 text-[8px] uppercase tracking-widest text-text-mute font-bold"
+          style={{ borderBottom: '1px solid var(--color-border)' }}>
+          <span className="w-6 text-center">Pos</span>
+          <span className="w-3" />
+          <span className="w-6" />
+          <span className="flex-1">Piloto</span>
+          <span className="w-9">Pneu</span>
+          <span className="w-14 text-right">Volta</span>
+          <span className="w-16 text-right">Gap / Int</span>
+        </div>
 
-      <div className="space-y-0.5" role="list" aria-label="Torre de posições ao vivo">
-        <AnimatePresence>
-          {positions.map((pos, i) => {
-            const driver = driversMap[pos.driver_number]
-            if (!driver) return null
-            return (
-              <DriverRow
-                key={pos.driver_number}
-                driver={driver}
-                position={pos.position ?? i + 1}
-                delta={pos.delta}
-                interval={intervals?.[pos.driver_number]}
-                stint={stints?.[pos.driver_number]}
-                lap={info.byDriver[pos.driver_number]}
-                lapInfo={info}
-                onSelect={onSelectDriver}
-                isSelected={selectedDriver?.driver_number === pos.driver_number}
-              />
-            )
-          })}
-        </AnimatePresence>
+        <div className="space-y-0.5" role="list" aria-label="Torre de posições ao vivo">
+          <AnimatePresence>
+            {positions.map((pos, i) => {
+              const driver = driversMap[pos.driver_number]
+              if (!driver) return null
+              return (
+                <DriverRow
+                  key={pos.driver_number}
+                  driver={driver}
+                  position={pos.position ?? i + 1}
+                  delta={pos.delta}
+                  interval={intervals?.[pos.driver_number]}
+                  stint={stints?.[pos.driver_number]}
+                  lap={info.byDriver[pos.driver_number]}
+                  lapInfo={info}
+                  onSelect={onSelectDriver}
+                  isSelected={selectedDriver?.driver_number === pos.driver_number}
+                />
+              )
+            })}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )
