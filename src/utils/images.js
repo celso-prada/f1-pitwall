@@ -21,33 +21,38 @@ const CAR_MAP = {
   cadillac:         'Cadillac.webp',
 }
 
+// Arquivos nomeados pelo PRÓPRIO circuitId (ASCII, minúsculo, sem espaço/acento).
+// Nomes "bonitos" com espaço/acento (ex.: "Albert Park.webp") funcionavam no dev
+// (Windows/Vite) mas falhavam servidos pela Vercel/CDN em produção — por isso a
+// imagem do Albert Park não aparecia. Manter o nome == circuitId elimina essa
+// classe de bug e dispensa qualquer encoding.
 const CIRCUIT_MAP = {
-  albert_park:   'Albert Park.webp',
-  americas:      'Americas.webp',
-  rodriguez:     'Autódromo Hermanos Rodríguez.webp',
-  bahrain:       'Bahrain International Circuit.webp',
-  baku:          'Baku City Circuit.webp',
-  catalunya:     'Circuit de Barcelona-Catalunya.webp',
-  villeneuve:    'Circuit Gilles-Villeneuve.webp',
-  zandvoort:     'Circuit Zandvoort.webp',
-  hungaroring:   'Hungaroring.webp',
-  interlagos:    'Interlagos.webp',
-  jeddah:        'Jeddah Corniche Circuit.webp',
-  vegas:         'Las Vegas Strip Circuit.webp',
-  losail:        'Lusail International Circuit.webp',
-  madrid:        'Madring_Madrid Street Circuit.webp',
-  // A Jolpica usa o circuitId "madring" (o f1api usa "madrid") — mapeia os dois.
-  madring:       'Madring_Madrid Street Circuit.webp',
-  marina_bay:    'Marina Bay Street Circuit.webp',
-  miami:         'Miami International Autodrome.webp',
-  monaco:        'Monaco.webp',
-  monza:         'Monza.webp',
-  red_bull_ring: 'Red Bull Ring.webp',
-  shanghai:      'Shanghai International Circuit.webp',
-  silverstone:   'Silverstone.webp',
-  spa:           'Spa-Francorchamps.webp',
-  suzuka:        'Suzuka.webp',
-  yas_marina:    'Yas Marina.webp',
+  albert_park:   'albert_park.webp',
+  americas:      'americas.webp',
+  rodriguez:     'rodriguez.webp',
+  bahrain:       'bahrain.webp',
+  baku:          'baku.webp',
+  catalunya:     'catalunya.webp',
+  villeneuve:    'villeneuve.webp',
+  zandvoort:     'zandvoort.webp',
+  hungaroring:   'hungaroring.webp',
+  interlagos:    'interlagos.webp',
+  jeddah:        'jeddah.webp',
+  vegas:         'vegas.webp',
+  losail:        'losail.webp',
+  // A Jolpica usa o circuitId "madring"; o f1api usa "madrid" — mapeia os dois.
+  madrid:        'madring.webp',
+  madring:       'madring.webp',
+  marina_bay:    'marina_bay.webp',
+  miami:         'miami.webp',
+  monaco:        'monaco.webp',
+  monza:         'monza.webp',
+  red_bull_ring: 'red_bull_ring.webp',
+  shanghai:      'shanghai.webp',
+  silverstone:   'silverstone.webp',
+  spa:           'spa.webp',
+  suzuka:        'suzuka.webp',
+  yas_marina:    'yas_marina.webp',
   // Sem imagem ainda
   imola:         null,
 }

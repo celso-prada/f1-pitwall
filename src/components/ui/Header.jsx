@@ -4,6 +4,7 @@ import { getCalendar } from '../../api/jolpica'
 import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { useCountdown } from '../../hooks/useCountdown'
 import { getNextRace, isToday, countdownUnits, raceISO } from '../../utils/format'
+import { useLiveStatusRefresh } from '../../hooks/useStandings'
 import { TickerBar } from '../live/TickerBar'
 import { Radio, BarChart2, Calendar, Home, Headphones, Gauge, Activity, Maximize2, Minimize2 } from 'lucide-react'
 import { useFullscreen } from '../../hooks/useFullscreen'
@@ -105,6 +106,8 @@ export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const { active: fsActive, toggle: toggleFs, supported: fsSupported } = useFullscreen()
+  // Revalida dados da Jolpica a cada transição de status ao vivo (treino/corrida).
+  useLiveStatusRefresh()
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)

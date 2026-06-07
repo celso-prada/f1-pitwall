@@ -283,6 +283,22 @@ async function getDriverRoundResult(driverId, round) {
   return race?.Results?.[0] ? { ...race.Results[0] } : null
 }
 
+// Maior round que JÁ TEM resultado nos endpoints por-piloto (os que a Jolpica
+// atualiza PRIMEIRO). É o sinal REAL de "a corrida aconteceu" — independe do
+// relógio do dispositivo, então funciona mesmo quando os dados estão à frente da
+// data agendada. Usado para detectar a defasagem dos agregados.
+export async function getLatestDataRound(driverIds) {
+  const ids = (driverIds ?? []).filter(Boolean).slice(0, 3)
+  if (!ids.length || jolpicaDown()) return null
+  const settled = await Promise.allSettled(ids.map(async id => {
+    const data = await get(`/current/drivers/${id}/results.json`)
+    const rounds = (data.MRData.RaceTable.Races ?? []).map(r => parseInt(r.round, 10)).filter(n => !isNaN(n))
+    return rounds.length ? Math.max(...rounds) : 0
+  }))
+  const max = Math.max(0, ...settled.filter(s => s.status === 'fulfilled').map(s => s.value))
+  return max || null
+}
+
 const num = v => parseFloat(v) || 0
 const reposition = list => { list.forEach((s, i) => { s.position = String(i + 1) }); return list }
 

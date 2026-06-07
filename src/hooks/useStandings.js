@@ -1,15 +1,42 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import {
   getCalendar, getDriverStandings, getConstructorStandings, getLastRaceResults,
-  getRaceResults, bridgeDriverStandings, bridgeConstructorStandings, bridgeRaceResults,
+  getRaceResults, getLatestDataRound,
+  bridgeDriverStandings, bridgeConstructorStandings, bridgeRaceResults,
 } from '../api/jolpica'
 import { useLiveTiming } from './useLiveTiming'
-import { latestCompletedRound, raceStarted } from '../utils/format'
 
-// Detecta a DEFASAGEM dos endpoints agregados da Jolpica logo após uma corrida:
-// o último round já concluído (calendário + bandeirada do feed) está à frente do
-// que o agregado /current/last/results reflete. Quando isso acontece, os hooks
-// abaixo reconstroem standings/pódio a partir dos endpoints por-piloto frescos.
+// Força revalidação dos dados derivados da Jolpica quando o STATUS AO VIVO muda
+// (treino/corrida começou ou terminou, ou o feed entrou/saiu do ar). Montado uma
+// vez no app (Header). Assim, a cada transição, standings/última corrida/sonda de
+// round são re-buscados — mantendo a home fresca em torno das sessões ao vivo.
+export function useLiveStatusRefresh() {
+  const qc = useQueryClient()
+  const { data: live } = useLiveTiming()
+  const prev = useRef(undefined)
+  const key = `${live?.live ? 1 : 0}|${live?.status ?? ''}`
+  useEffect(() => {
+    if (prev.current !== undefined && prev.current !== key) {
+      for (const k of [
+        ['driverStandings'], ['constructorStandings'], ['lastRace'],
+        ['latestDataRound'], ['raceResults'], ['calendar'],
+      ]) {
+        qc.invalidateQueries({ queryKey: k })
+      }
+    }
+    prev.current = key
+  }, [key, qc])
+}
+
+// Detecta a DEFASAGEM dos endpoints agregados da Jolpica logo após uma corrida.
+// IMPORTANTE: a detecção é POR DADO, não por relógio. Comparamos o maior round
+// que já tem resultado por-piloto (getLatestDataRound — o que a Jolpica atualiza
+// primeiro) com o round que o agregado /current/last/results reflete. Assim o
+// bridge ativa sempre que a corrida "existe" nos dados, mesmo que o relógio do
+// dispositivo ainda não tenha passado pelo horário agendado (dados fictícios
+// costumam estar à frente do calendário). Quando há defasagem, os hooks abaixo
+// reconstroem standings/pódio a partir dos endpoints por-piloto frescos.
 function useSeasonFreshness() {
   const { data: races } = useQuery({
     queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000,
@@ -17,15 +44,23 @@ function useSeasonFreshness() {
   const { data: lastRace } = useQuery({
     queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000,
   })
-  const { data: live } = useLiveTiming()
+  const { data: drivers } = useQuery({
+    queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000,
+  })
 
-  const raceFinished = !!live && live.live === false && live.recentEvent?.type === 'Race'
-  const completed = latestCompletedRound(races ?? [], { liveRaceFinished: raceFinished })
+  const probeIds = (drivers ?? []).slice(0, 3).map(s => s.Driver.driverId)
+  const { data: latestDataRound } = useQuery({
+    queryKey: ['latestDataRound', probeIds.join(',')],
+    queryFn: () => getLatestDataRound(probeIds),
+    enabled: probeIds.length > 0,
+    staleTime: 120_000,
+    refetchInterval: 120_000, // re-checa periodicamente para pegar corrida nova
+  })
+
   const aggRound = lastRace ? parseInt(lastRace.round, 10) : null
-
-  // Só há defasagem se uma corrida concluída ainda não chegou ao agregado.
-  const stale = completed && aggRound && completed.round > aggRound ? completed : null
-  return { staleRound: stale ? stale.round : null, staleRace: stale }
+  const staleRound = latestDataRound && aggRound && latestDataRound > aggRound ? latestDataRound : null
+  const staleRace = staleRound ? (races ?? []).find(r => parseInt(r.round, 10) === staleRound) : null
+  return { staleRound, staleRace, latestDataRound: latestDataRound ?? null }
 }
 
 // Enquanto o bridge ainda não conseguiu dado fresco (por-piloto não atualizou),
@@ -110,14 +145,17 @@ export function useRaceResults(season, round) {
   const { data: drivers } = useQuery({
     queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000,
   })
+  const { latestDataRound } = useSeasonFreshness()
 
   const calRace = (calendar ?? []).find(
     r => String(r.round) === String(round) && String(r.season) === String(season),
   )
   const driverIds = (drivers ?? []).map(s => s.Driver.driverId)
-  // Só faz bridge quando o agregado veio vazio para uma corrida (do calendário
-  // atual) que já largou; senão é uma corrida histórica/normal e o agregado basta.
-  const active = !base.data && !!calRace && raceStarted(calRace) && driverIds.length > 0
+  // Faz bridge quando o agregado veio vazio para uma corrida (do calendário
+  // atual) cujo resultado JÁ EXISTE nos dados por-piloto (round <= latestDataRound)
+  // — detecção por dado, não por relógio. Corrida histórica/futura usa o agregado.
+  const active = !base.data && !!calRace && driverIds.length > 0
+    && !!latestDataRound && Number(round) <= latestDataRound
 
   const bridge = useQuery({
     queryKey: ['raceResults', season, round, 'bridge'],

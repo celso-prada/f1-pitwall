@@ -8,7 +8,7 @@
 //   navegação (SPA)  → network-first, cai no index.html do cache offline
 //   assets same-origin (JS/CSS/PNG/SVG hashados) → cache-first (imutáveis)
 //   cross-origin     → ignora (deixa o browser/queries cuidarem)
-const VERSION = 'pitwall-v1'
+const VERSION = 'pitwall-v2'
 const SHELL = `${VERSION}-shell`
 const ASSETS = `${VERSION}-assets`
 const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png']
@@ -51,7 +51,29 @@ self.addEventListener('fetch', (event) => {
 
   if (!sameOrigin) return
 
-  // Assets hashados são imutáveis → cache-first, populando no primeiro acesso.
+  // Imagens/ícones têm nome fixo (não-hashado) → podem ser atualizados sem mudar
+  // a URL. Stale-while-revalidate: serve do cache na hora E busca a versão nova em
+  // segundo plano (aparece no próximo load). Só cacheia respostas que são DE FATO
+  // imagem — evita "envenenar" o cache com um HTML (ex.: rewrite de SPA) no lugar
+  // do arquivo, que era o que deixava a arte quebrada.
+  if (url.pathname.startsWith('/images/') || url.pathname.startsWith('/icons/')) {
+    event.respondWith(
+      caches.open(ASSETS).then(async (cache) => {
+        const cached = await cache.match(request)
+        const network = fetch(request).then((resp) => {
+          const ct = resp.headers.get('content-type') || ''
+          if (resp.ok && (resp.type === 'basic' || resp.type === 'default') && ct.startsWith('image/')) {
+            cache.put(request, resp.clone())
+          }
+          return resp
+        }).catch(() => cached)
+        return cached || network
+      }),
+    )
+    return
+  }
+
+  // Demais assets (JS/CSS hashados) são imutáveis → cache-first.
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached
