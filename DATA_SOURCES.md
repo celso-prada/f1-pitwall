@@ -12,7 +12,7 @@ plano B. Atualize este arquivo ao mexer em qualquer fonte.
 | Dado | Fonte primária | Fallback(s) | Onde no código |
 |---|---|---|---|
 | **Ao vivo (timing)** | Feed oficial `signalrcore` (serverless `/api/live`) | — (OpenF1 bloqueia ao vivo) | `api/_f1live.mjs`, `api/live.js`, `src/api/livetiming.js` |
-| **Classificação / calendário / resultados** | Jolpica (Ergast) | f1api.dev | `src/api/jolpica.js` (`withFallback`) |
+| **Classificação / calendário / resultados** | Jolpica via proxy edge-cache (`/api/jolpica`) | snapshot estático → f1api.dev | `src/api/jolpica.js`, `api/jolpica.js`, `src/api/snapshot.js` |
 | **Resultados por circuito** | Jolpica | Wikipedia (reconstrói vencedores) | `src/api/jolpica.js` + `src/api/wikipedia.js` |
 | **Stats de carreira do piloto** | Jolpica | infobox da Wikipedia | `src/api/jolpica.js`, `src/api/wikipedia.js` |
 | **Foto/bio de piloto e equipe** | Wikipedia (EN foto + PT-BR bio) | foto do feed oficial (`HeadshotUrl`) | `src/api/wikipedia.js`, `src/hooks/useDriverPhotos.js` |
@@ -36,6 +36,31 @@ o resolver usado por todas as leituras de dados históricos. Três camadas:
 Quando o f1api.dev também não cobre (ex.: resultados por circuito), o fallback
 final reconstrói o dado da **Wikipedia**. A página **`/status`** mostra a saúde
 de cada upstream em tempo real.
+
+### Edge-cache + snapshot estático (2026-06)
+
+Mudança para acabar com a classe de bug "Jolpica engasga → app cai no f1api.dev,
+que tem dados do mundo real incompatíveis (round diferente, nome 'Formula 1 …'),
+e Mônaco some / pódio não carrega / agenda quebra":
+
+1. **Proxy edge-cache `api/jolpica.js`** — em produção o cliente lê a Jolpica
+   através deste serverless, com `s-maxage=300, stale-while-revalidate=86400`. A
+   borda da Vercel guarda a última resposta **coerente** e continua servindo
+   mesmo se a Jolpica cair. É a versão autossustentável do "arquivo de cache".
+2. **Snapshot estático `public/data/season-latest.json`** — gerado no `prebuild`
+   por `scripts/snapshot.mjs` (Jolpica → calendário com horários de sessão +
+   standings + resultados/quali de cada round concluído). Lido por
+   `src/api/snapshot.js` como **penúltimo fallback** (antes do f1api.dev): por ser
+   dado da própria Jolpica, fica coerente com o resto do app mesmo 100% offline.
+   Um baseline é commitado no repo, então o primeiro build (ou um build com a
+   Jolpica fora) já funciona.
+3. **`api/refresh.js` + cron** (`vercel.json`, domingos 18h UTC) — aquece o
+   edge-cache dos endpoints agregados após as corridas, para o primeiro visitante
+   já pegar standings/resultados frescos.
+
+Ordem efetiva de fallback dos agregados: **Jolpica (edge) → snapshot → f1api.dev
+(nomes normalizados via `cleanRaceName`)**. O `TIMEOUT` subiu de 3s→6s (com a
+borda na frente, 3s só abria o breaker à toa).
 
 ## Ao vivo: por que o feed oficial
 

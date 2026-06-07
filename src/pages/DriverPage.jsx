@@ -8,9 +8,9 @@ import {
 } from '../api/jolpica'
 import { getWikipediaDriverData, getWikipediaDriverStats } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
-import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY } from '../utils/flags'
+import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY, countryPT } from '../utils/flags'
 import { useDriverPhotos } from '../hooks/useDriverPhotos'
-import { formatDate } from '../utils/format'
+import { formatDate, cleanRaceName } from '../utils/format'
 import { Skeleton } from '../components/ui/Skeleton'
 import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
@@ -122,8 +122,10 @@ function SeasonHistoryTable({ history, navigate }) {
 
 function PositionChart({ results, color, season }) {
   if (!results?.length) return null
+  // Rótulo da coluna = país do circuito (antes usava o início do nome da corrida,
+  // que com o fallback f1api.dev virava "Formula" em todas as colunas).
   const data = results.map(r => ({
-    race: r.raceName?.replace(' Grand Prix', '').replace(' Prix', '').slice(0, 8),
+    race: countryPT(r.Circuit?.Location?.country) || cleanRaceName(r.raceName)?.replace(' Grand Prix', '') || '—',
     pos: parseInt(r.Results?.[0]?.position ?? 0),
   })).filter(d => d.pos > 0)
 
@@ -177,7 +179,7 @@ function RecentResults({ results, season }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-text truncate">
-                  {race.raceName?.replace(' Grand Prix', ' GP')}
+                  {cleanRaceName(race.raceName)?.replace(' Grand Prix', ' GP')}
                 </div>
                 <div className="num text-[9px] text-text-mute">{formatDate(race.date)}</div>
               </div>
@@ -240,7 +242,7 @@ function RaceHistory({ races, navigate }) {
               }
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-semibold text-text truncate block">
-                  {race.raceName?.replace(' Grand Prix', ' GP')}
+                  {cleanRaceName(race.raceName)?.replace(' Grand Prix', ' GP')}
                 </span>
               </div>
               <div className="text-[10px] text-right flex-shrink-0 hidden sm:block truncate max-w-[90px]"

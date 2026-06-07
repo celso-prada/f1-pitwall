@@ -2,11 +2,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
-import { getQualifyingResults, getLapTimes } from '../api/jolpica'
+import { getQualifyingResults, getLapTimes, getCalendar } from '../api/jolpica'
 import { useRaceResults } from '../hooks/useStandings'
 import { getTeamColor } from '../utils/teamColors'
 import { getCircuitImage } from '../utils/images'
-import { formatDate } from '../utils/format'
+import { formatDate, cleanRaceName } from '../utils/format'
 import { RaceTable } from '../components/race/RaceTable'
 import { PositionChangeChart } from '../components/race/LapChart'
 import { Panel } from '../components/ui/Panel'
@@ -90,6 +90,11 @@ export function RacePage() {
   const [view, setView] = useState('results')
 
   const { data: race, isLoading: raceLoading } = useRaceResults(season, round)
+  // Metadados do calendário — base para o modo degradado (quando o resultado
+  // ainda não existe, mostramos circuito/data em vez de "não encontrada").
+  const { data: calendar } = useQuery({
+    queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000,
+  })
   const { data: quali } = useQuery({
     queryKey: ['qualifying', season, round],
     queryFn: () => getQualifyingResults(season, round),
@@ -112,9 +117,48 @@ export function RacePage() {
   }
 
   if (!race) {
+    // Modo degradado: sem resultado disponível (corrida futura ou todas as fontes
+    // fora). Em vez de um vazio, mostramos o circuito (imagem já cadastrada) e os
+    // dados básicos do calendário, com link para a página do circuito.
+    const meta = (calendar ?? []).find(r => String(r.round) === String(round))
+    const img = getCircuitImage(meta?.Circuit?.circuitId)
     return (
       <PageShell>
-        <div className="text-center text-text-mute py-20">Corrida não encontrada</div>
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Voltar"
+          className="flex items-center gap-1.5 text-text-mute hover:text-text text-sm transition-colors"
+        >
+          <ArrowLeft size={16} aria-hidden /> Voltar
+        </button>
+        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
+          {img && (
+            <div className="w-full flex items-center justify-center" style={{ background: 'var(--color-bg)', minHeight: 160 }}>
+              <img src={img} alt="" aria-hidden className="max-h-52 w-full object-contain p-5"
+                onError={e => { e.target.parentElement.style.display = 'none' }} />
+            </div>
+          )}
+          <div className="p-5 text-center">
+            <h1 className="font-display font-bold text-xl sm:text-2xl text-text uppercase">
+              {cleanRaceName(meta?.raceName) ?? `Round ${round}`}
+            </h1>
+            {meta && (
+              <p className="text-xs text-text-mute mt-1">
+                {meta.Circuit?.Location?.locality}{meta.Circuit?.Location?.country ? `, ${meta.Circuit.Location.country}` : ''} · {formatDate(meta.date)}
+              </p>
+            )}
+            <p className="text-sm text-text-mute mt-4">Resultado ainda não disponível.</p>
+            {meta?.Circuit?.circuitId && (
+              <button
+                onClick={() => navigate(`/circuit/${meta.Circuit.circuitId}`)}
+                className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+                style={{ background: 'var(--color-f1)', color: 'white' }}
+              >
+                Ver o circuito
+              </button>
+            )}
+          </div>
+        </div>
       </PageShell>
     )
   }
@@ -176,7 +220,7 @@ export function RacePage() {
               </span>
             </div>
             <h1 className="font-display font-bold text-2xl sm:text-3xl text-text uppercase leading-tight">
-              {race.raceName}
+              {cleanRaceName(race.raceName)}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-text-mute">
               <div className="flex items-center gap-1">

@@ -4,8 +4,13 @@
 // In production, go through our Vercel serverless proxy so responses are served
 // from the edge cache (f1api.dev itself is ~4.5s/req). In dev there is no
 // serverless runtime, so hit f1api.dev directly.
+import { cleanRaceName } from '../utils/format'
+
 const DIRECT = 'https://f1api.dev/api'
 const USE_PROXY = import.meta.env.PROD
+
+// f1api.dev schedule slot → Ergast {date,time} (undefined when absent).
+const sess = s => (s?.date ? { date: s.date, time: s.time ?? null } : undefined)
 
 const directUrl = path => `${DIRECT}/${path.replace(/^\//, '')}`
 const proxyUrl = path => `/api/f1?path=${encodeURIComponent(path.replace(/^\//, ''))}`
@@ -120,11 +125,19 @@ export async function getCircuitInfo(circuitId) {
 const mapRace = (r, season) => ({
   season: String(season),
   round: String(r.round),
-  raceName: r.raceName,
+  raceName: cleanRaceName(r.raceName),
   date: r.schedule?.race?.date ?? r.date,
   // Mantém o "Z": o horário é UTC e remover o fuso fazia o JS interpretar como
   // horário local, errando o countdown pelo offset do aparelho (ex.: +3h no BR).
   time: (r.schedule?.race?.time ?? r.time) ?? null,
+  // Agenda do fim de semana (treinos/quali/sprint) — em chaves Ergast para a
+  // agenda renderizar igual aos dados da Jolpica.
+  FirstPractice:    sess(r.schedule?.fp1),
+  SecondPractice:   sess(r.schedule?.fp2),
+  ThirdPractice:    sess(r.schedule?.fp3),
+  Qualifying:       sess(r.schedule?.qualy),
+  Sprint:           sess(r.schedule?.sprintRace),
+  SprintQualifying: sess(r.schedule?.sprintQualy),
   Circuit: {
     circuitId: r.circuit?.circuitId,
     circuitName: r.circuit?.circuitName,
@@ -164,7 +177,7 @@ export async function getRaceResults(season, round) {
   return {
     season: String(data.season ?? season),
     round: String(r.round ?? round),
-    raceName: r.raceName,
+    raceName: cleanRaceName(r.raceName),
     date: r.date,
     Circuit: {
       circuitId: r.circuit?.circuitId,
@@ -183,7 +196,7 @@ export async function getQualifyingResults(season, round) {
   return {
     season: String(data.season ?? season),
     round: String(r.round ?? round),
-    raceName: r.raceName,
+    raceName: cleanRaceName(r.raceName),
     Circuit: {
       circuitId: r.circuit?.circuitId,
       circuitName: r.circuit?.circuitName,
@@ -219,7 +232,7 @@ export async function getDriverResults(driverId, season = 'current') {
   return (data.results ?? []).map(({ race: r, result: res }) => ({
     season: String(data.season ?? season),
     round: String(r?.round ?? ''),
-    raceName: r?.name ?? r?.raceName,
+    raceName: cleanRaceName(r?.name ?? r?.raceName),
     date: r?.date,
     Circuit: {
       circuitId: r?.circuit?.circuitId,
@@ -244,7 +257,7 @@ export async function getLastRaceResults() {
   return {
     season: String(data.season ?? ''),
     round: String(r.round ?? ''),
-    raceName: r.raceName,
+    raceName: cleanRaceName(r.raceName),
     date: r.schedule?.race?.date ?? r.date,
     Circuit: {
       circuitId: r.circuit?.circuitId,

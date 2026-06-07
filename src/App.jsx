@@ -2,6 +2,7 @@ import { lazy, Suspense, useLayoutEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { hydrateQueryClient, persistQueryClient } from './utils/queryPersist'
+import { hydrateFromSnapshot } from './api/snapshot'
 import { Header } from './components/ui/Header'
 import { PageShell } from './components/ui/PageShell'
 import { SkeletonCard } from './components/ui/Skeleton'
@@ -38,7 +39,13 @@ const queryClient = new QueryClient({
 })
 
 // Paint instantly from the last good data, then revalidate in the background.
+// 1) localStorage (per-device, costuma ser o mais fresco) — síncrono, antes do
+//    primeiro render. 2) snapshot estático commitado no repo — preenche o que o
+//    localStorage não tiver (ex.: primeira visita / aparelho novo), garantindo
+//    que nenhuma página abra vazia. Ambos marcam o dado como stale, então a
+//    Jolpica ao vivo revalida em seguida e a tela atualiza sozinha se mudar.
 hydrateQueryClient(queryClient)
+hydrateFromSnapshot(queryClient)
 persistQueryClient(queryClient)
 
 // Fallback enquanto o chunk da rota baixa. Reaproveita o shell + skeleton já

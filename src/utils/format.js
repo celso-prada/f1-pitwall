@@ -156,3 +156,53 @@ export function positionSuffix(n) {
   const v = n % 100
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
+
+// Nomes de corrida do f1api.dev vêm com prefixo "Formula 1" + patrocinador +
+// ano (ex.: "Formula 1 Qatar Airways Australian Grand Prix 2026"). Isso fazia o
+// gráfico do piloto mostrar "Formula" em toda coluna e poluía as listas. Aqui
+// limpamos para o nome canônico ("Australian Grand Prix"). A Jolpica já entrega
+// limpo, então é idempotente para ela.
+const SPONSORS = /\b(Qatar Airways|Heineken|Aramco|Crypto\.com|Pirelli|Rolex|Lenovo|MSC Cruises|Gulf Air|STC|Louis Vuitton|AWS|Etihad Airways|Honda|Singapore Airlines|DHL|Pzero|Tag Heuer|MoneyGram|Sahara Force|Grand Premio|Gran Premio)\b/gi
+export function cleanRaceName(name) {
+  if (!name) return name
+  return name
+    .replace(/^formula\s*1\s*/i, '')
+    .replace(SPONSORS, '')
+    .replace(/\b(19|20)\d{2}\b\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+// Sessões do fim de semana presentes num objeto de corrida Ergast/Jolpica, em
+// ordem cronológica, com a corrida sempre por último. Usado para listar
+// data+hora de treino/quali/sprint/corrida na agenda.
+export function raceSessions(race) {
+  if (!race) return []
+  const defs = [
+    ['FirstPractice', 'Treino 1'],
+    ['SecondPractice', 'Treino 2'],
+    ['ThirdPractice', 'Treino 3'],
+    ['SprintQualifying', 'Sprint Quali'],
+    ['Sprint', 'Sprint'],
+    ['Qualifying', 'Qualifying'],
+  ]
+  const out = []
+  for (const [key, label] of defs) {
+    const s = race[key]
+    if (s?.date) out.push({ key, label, date: s.date, time: s.time })
+  }
+  out.push({ key: 'Race', label: 'Corrida', date: race.date, time: race.time })
+  return out
+}
+
+// Formata uma sessão (data + hora local do dispositivo). O horário vem em UTC
+// ("Z"); raceISO garante a interpretação correta antes de converter pro fuso.
+export function formatSession(date, time) {
+  if (!date) return { day: '—', time: '' }
+  const d = new Date(raceISO(date, time, '00:00:00'))
+  if (isNaN(d)) return { day: '—', time: '' }
+  return {
+    day: d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }),
+    time: time ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
+  }
+}

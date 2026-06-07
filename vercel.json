@@ -1,4 +1,11 @@
 {
-  "functions": { "api/live.js": { "maxDuration": 15 } },
+  "functions": {
+    "api/live.js": { "maxDuration": 15 },
+    "api/jolpica.js": { "maxDuration": 15 },
+    "api/f1.js": { "maxDuration": 15 }
+  },
+  "crons": [
+    { "path": "/api/refresh", "schedule": "0 18 * * 0" }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

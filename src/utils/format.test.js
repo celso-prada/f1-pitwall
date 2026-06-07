@@ -13,6 +13,9 @@ import {
   isRaceOver,
   latestCompletedRound,
   RACE_BROADCAST_MS,
+  cleanRaceName,
+  raceSessions,
+  formatSession,
 } from './format'
 
 describe('formatGap', () => {
@@ -202,5 +205,54 @@ describe('positionSuffix', () => {
     expect(positionSuffix(4)).toBe('4th')
     expect(positionSuffix(11)).toBe('11th')
     expect(positionSuffix(21)).toBe('21st')
+  })
+})
+
+describe('cleanRaceName', () => {
+  it('remove o prefixo "Formula 1", patrocinador e ano do f1api.dev', () => {
+    expect(cleanRaceName('Formula 1 Qatar Airways Australian Grand Prix 2026'))
+      .toBe('Australian Grand Prix')
+    expect(cleanRaceName('Formula 1 Heineken Chinese Grand Prix 2026'))
+      .toBe('Chinese Grand Prix')
+  })
+  it('é idempotente para nomes já limpos da Jolpica', () => {
+    expect(cleanRaceName('Monaco Grand Prix')).toBe('Monaco Grand Prix')
+  })
+  it('tolera vazio/undefined', () => {
+    expect(cleanRaceName('')).toBe('')
+    expect(cleanRaceName(undefined)).toBe(undefined)
+  })
+})
+
+describe('raceSessions', () => {
+  const race = {
+    date: '2026-06-07', time: '13:00:00Z',
+    FirstPractice: { date: '2026-06-05', time: '11:30:00Z' },
+    Qualifying: { date: '2026-06-06', time: '14:00:00Z' },
+  }
+  it('lista as sessões presentes com a corrida por último', () => {
+    const s = raceSessions(race)
+    expect(s.map(x => x.key)).toEqual(['FirstPractice', 'Qualifying', 'Race'])
+    expect(s.at(-1)).toMatchObject({ key: 'Race', date: '2026-06-07', time: '13:00:00Z' })
+  })
+  it('sem horários de sessão devolve só a corrida', () => {
+    expect(raceSessions({ date: '2026-06-07' }).map(x => x.key)).toEqual(['Race'])
+  })
+  it('tolera entrada nula', () => {
+    expect(raceSessions(null)).toEqual([])
+  })
+})
+
+describe('formatSession', () => {
+  it('formata dia e hora a partir de data+hora UTC', () => {
+    const out = formatSession('2026-06-07', '13:00:00Z')
+    expect(out.day).toMatch(/\w/)
+    expect(out.time).toMatch(/\d{2}:\d{2}/)
+  })
+  it('sem data devolve placeholder', () => {
+    expect(formatSession(null).day).toBe('—')
+  })
+  it('sem hora não inventa horário', () => {
+    expect(formatSession('2026-06-07').time).toBe('')
   })
 })

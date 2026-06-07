@@ -43,6 +43,21 @@ export const CIRCUIT_OPENF1_NAME = {
   yas_marina: 'Yas Marina',
 }
 
+// Nome do país (como vem da Jolpica/f1api, em inglês) → rótulo curto em PT.
+// Usado nas colunas do gráfico de posições do piloto (no lugar do nome da
+// corrida, que vinha "Formula …"). Fallback: o próprio nome recebido.
+export const COUNTRY_PT = {
+  Australia: 'Austrália', China: 'China', Japan: 'Japão', USA: 'EUA',
+  'United States': 'EUA', Canada: 'Canadá', Monaco: 'Mônaco', Spain: 'Espanha',
+  Austria: 'Áustria', UK: 'Reino Unido', 'United Kingdom': 'Reino Unido',
+  'Great Britain': 'Reino Unido', Hungary: 'Hungria', Belgium: 'Bélgica',
+  Netherlands: 'Holanda', Italy: 'Itália', Azerbaijan: 'Azerbaijão',
+  Singapore: 'Singapura', Mexico: 'México', Brazil: 'Brasil', Qatar: 'Catar',
+  UAE: 'Emirados', 'United Arab Emirates': 'Emirados', 'Saudi Arabia': 'Arábia Saudita',
+  Bahrain: 'Bahrein', France: 'França', Germany: 'Alemanha', Portugal: 'Portugal',
+}
+export const countryPT = c => COUNTRY_PT[c] ?? c
+
 // circuitId → ISO country code (lowercase for flag-icons)
 export const CIRCUIT_COUNTRY = {
   bahrain: 'bh', jeddah: 'sa', albert_park: 'au', suzuka: 'jp',

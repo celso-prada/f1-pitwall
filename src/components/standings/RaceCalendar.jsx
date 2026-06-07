@@ -2,12 +2,46 @@ import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
 import { useLiveTiming } from '../../hooks/useLiveTiming'
-import { formatDate, isRaceOver, raceStarted } from '../../utils/format'
+import { formatDate, isRaceOver, raceStarted, cleanRaceName, raceSessions, formatSession } from '../../utils/format'
 import { CIRCUIT_COUNTRY } from '../../utils/flags'
 import { Flag } from '../ui/Flag'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, Clock, ChevronRight } from 'lucide-react'
 import { Skeleton } from '../ui/Skeleton'
+
+// Agenda do fim de semana (treinos/quali/sprint/corrida) com data+hora local.
+// Mobile-first: 2 colunas que empilham bem em telas estreitas. Só aparece para
+// corridas que ainda vão acontecer, onde o usuário quer saber QUANDO assistir.
+function SessionSchedule({ race }) {
+  const sessions = raceSessions(race)
+  if (sessions.length <= 1) return null // sem horários de sessão (só a corrida)
+  return (
+    <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+      {sessions.map(s => {
+        const { day, time } = formatSession(s.date, s.time)
+        const isRace = s.key === 'Race'
+        return (
+          <div
+            key={s.key}
+            className="flex items-center justify-between gap-2 rounded-md px-2 py-1"
+            style={{
+              background: isRace ? 'rgba(225,6,0,0.08)' : 'var(--color-surface-2)',
+              border: `1px solid ${isRace ? 'rgba(225,6,0,0.25)' : 'var(--color-border-mute)'}`,
+            }}
+          >
+            <span className="text-[8px] uppercase tracking-wide font-bold flex-shrink-0"
+              style={{ color: isRace ? 'var(--color-f1)' : 'var(--color-text-mute)' }}>
+              {s.label}
+            </span>
+            <span className="num text-[9px] text-text-dim text-right leading-tight">
+              {day}{time && <span className="text-text"> · {time}</span>}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export function RaceCalendar({ season = 'current', compact = false }) {
   const navigate = useNavigate()
@@ -50,7 +84,8 @@ export function RaceCalendar({ season = 'current', compact = false }) {
         const isNext = !compact
           ? (!isPast && (races ?? []).slice(0, parseInt(race.round) - 1).every(r => isRaceOver(r, now)))
           : (!isPast && list.slice(0, i).every(r => isRaceOver(r, now)))
-        const countryCode = CIRCUIT_COUNTRY[race.Circuit.circuitId] ?? null
+        const circuitId = race.Circuit?.circuitId
+        const countryCode = CIRCUIT_COUNTRY[circuitId] ?? null
 
         // /live só enquanto a corrida acontece AGORA (já largou, ainda não
         // terminou) E o feed está transmitindo. Terminada a corrida, o clique
@@ -59,7 +94,7 @@ export function RaceCalendar({ season = 'current', compact = false }) {
         const handleClick = () => {
           if (inProgress) navigate('/live')
           else if (raceStarted(race, now)) navigate(`/race/${race.season ?? season}/${race.round}`)
-          else navigate(`/circuit/${race.Circuit.circuitId}`)
+          else if (circuitId) navigate(`/circuit/${circuitId}`)
         }
 
         return (
@@ -108,12 +143,14 @@ export function RaceCalendar({ season = 'current', compact = false }) {
                   )}
                 </div>
                 <div className="text-sm font-bold text-text truncate">
-                  {race.raceName.replace(' Grand Prix', ' GP')}
+                  {cleanRaceName(race.raceName)?.replace(' Grand Prix', ' GP')}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
                   <div className="flex items-center gap-1 text-[9px] text-text-mute">
                     <MapPin size={9} aria-hidden />
-                    <span className="truncate max-w-[120px]">{race.Circuit.Location.locality}</span>
+                    <span className="truncate max-w-[120px]">
+                      {race.Circuit?.Location?.locality ?? race.Circuit?.circuitName ?? '—'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1 text-[9px] text-text-mute flex-shrink-0">
                     <Clock size={9} aria-hidden />
@@ -124,6 +161,14 @@ export function RaceCalendar({ season = 'current', compact = false }) {
 
               <ChevronRight size={12} className="flex-shrink-0 text-text-mute group-hover:text-text transition-colors" aria-hidden />
             </div>
+
+            {/* Agenda do fim de semana — só para corridas que ainda vão acontecer
+                e na visão completa (a versão compacta da home fica enxuta). */}
+            {!compact && !isPast && (
+              <div className="px-3 pb-3 -mt-0.5">
+                <SessionSchedule race={race} />
+              </div>
+            )}
           </motion.div>
         )
       })}

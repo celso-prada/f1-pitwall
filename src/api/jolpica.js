@@ -1,15 +1,43 @@
 import * as f1api from './f1api'
+import * as snapshot from './snapshot'
 import * as wiki from './wikipedia'
 
 const BASE = 'https://api.jolpi.ca/ergast/f1'
-const TIMEOUT = 3000
+// 6s (era 3s): com o proxy edge-cache na frente a maioria das respostas é
+// instantânea, então um teto curto demais só abria o breaker à toa e jogava o
+// app no fallback incompatível. 6s tolera um cold-miss da borda sem travar a UI.
+const TIMEOUT = 6000
+
+// Em produção passamos pelo proxy serverless (/api/jolpica) que tem edge-cache +
+// stale-while-revalidate: a borda guarda a última resposta COERENTE da Jolpica e
+// continua servindo mesmo se a Jolpica cair. Em dev não há runtime serverless,
+// então batemos direto na Jolpica.
+const USE_PROXY = import.meta.env.PROD
+const proxyUrl = path => `/api/jolpica?path=${encodeURIComponent(path.replace(/^\//, ''))}`
 
 async function get(path) {
   // Bounded request — api.jolpi.ca can hang indefinitely when overloaded/down,
   // which previously left the UI stuck on skeletons forever.
+  if (USE_PROXY) {
+    try {
+      const res = await fetch(proxyUrl(path), { signal: AbortSignal.timeout(TIMEOUT) })
+      if (res.ok) return await res.json()
+    } catch { /* borda indisponível → tenta direto */ }
+  }
   const res = await fetch(`${BASE}${path}`, { signal: AbortSignal.timeout(TIMEOUT) })
   if (!res.ok) throw new Error(`Jolpica ${path} → ${res.status}`)
   return res.json()
+}
+
+// Encadeia fallbacks: tenta o snapshot estático (coerente com o resto do app)
+// e só então o f1api.dev (dados do mundo real, que divergem em round/nome). Usar
+// o snapshot antes evita a classe de bug "Mônaco some / colunas 'Formula'".
+const chain = (...fns) => async () => {
+  let lastErr
+  for (const fn of fns) {
+    try { return await fn() } catch (err) { lastErr = err }
+  }
+  throw lastErr
 }
 
 // --- Circuit breaker ---------------------------------------------------------
@@ -77,7 +105,7 @@ export async function getDriverStandings(season = 'current') {
       const data = await get(`/${season}/driverStandings.json`)
       return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings ?? []
     },
-    () => f1api.getDriverStandings(season),
+    chain(() => snapshot.getDriverStandings(season), () => f1api.getDriverStandings(season)),
   )
 }
 
@@ -87,7 +115,7 @@ export async function getConstructorStandings(season = 'current') {
       const data = await get(`/${season}/constructorStandings.json`)
       return data.MRData.StandingsTable.StandingsLists[0]?.ConstructorStandings ?? []
     },
-    () => f1api.getConstructorStandings(season),
+    chain(() => snapshot.getConstructorStandings(season), () => f1api.getConstructorStandings(season)),
   )
 }
 
@@ -97,7 +125,7 @@ export async function getCalendar(season = 'current') {
       const data = await get(`/${season}.json`)
       return data.MRData.RaceTable.Races ?? []
     },
-    () => f1api.getCalendar(season),
+    chain(() => snapshot.getCalendar(season), () => f1api.getCalendar(season)),
   )
 }
 
@@ -107,7 +135,7 @@ export async function getLastRaceResults() {
       const data = await get('/current/last/results.json')
       return data.MRData.RaceTable.Races[0] ?? null
     },
-    () => f1api.getLastRaceResults(),
+    chain(() => snapshot.getLastRaceResults(), () => f1api.getLastRaceResults()),
   )
 }
 
@@ -117,7 +145,7 @@ export async function getRaceResults(season, round) {
       const data = await get(`/${season}/${round}/results.json`)
       return data.MRData.RaceTable.Races[0] ?? null
     },
-    () => f1api.getRaceResults(season, round),
+    chain(() => snapshot.getRaceResults(season, round), () => f1api.getRaceResults(season, round)),
   )
 }
 
@@ -127,7 +155,7 @@ export async function getDriverResults(driverId, season = 'current') {
       const data = await get(`/${season}/drivers/${driverId}/results.json`)
       return data.MRData.RaceTable.Races ?? []
     },
-    () => f1api.getDriverResults(driverId, season),
+    chain(() => snapshot.getDriverResults(driverId, season), () => f1api.getDriverResults(driverId, season)),
   )
 }
 
@@ -137,7 +165,7 @@ export async function getDriverSeasonStats(driverId) {
       const data = await get(`/current/drivers/${driverId}/driverStandings.json`)
       return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings[0] ?? null
     },
-    () => f1api.getDriverSeasonStats(driverId),
+    chain(() => snapshot.getDriverSeasonStats(driverId), () => f1api.getDriverSeasonStats(driverId)),
   )
 }
 
@@ -230,7 +258,7 @@ export async function getQualifyingResults(season, round) {
       const data = await get(`/${season}/${round}/qualifying.json`)
       return data.MRData.RaceTable.Races[0] ?? null
     },
-    () => f1api.getQualifyingResults(season, round),
+    chain(() => snapshot.getQualifyingResults(season, round), () => f1api.getQualifyingResults(season, round)),
   )
 }
 
