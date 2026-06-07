@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
-import { getDriverStandings, getCalendar } from '../../api/jolpica'
+import { getCalendar } from '../../api/jolpica'
+import { useDriverStandings } from '../../hooks/useStandings'
 import { getNextRace } from '../../utils/format'
 import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { askClaude, hasApiKey, setApiKey } from '../../api/claude'
@@ -91,12 +92,7 @@ export function ChatPanel() {
   const [needsKey, setNeedsKey] = useState(!hasApiKey())
   const bottomRef = useRef(null)
 
-  const { data: standings } = useQuery({
-    queryKey: ['driverStandings', 'current'],
-    queryFn: () => getDriverStandings('current'),
-    staleTime: 300_000,
-    enabled: open,
-  })
+  const { data: standings } = useDriverStandings('current', { enabled: open })
   const { data: races } = useQuery({
     queryKey: ['calendar', 'current'],   // fixed: was hardcoded '2025'
     queryFn: () => getCalendar('current'),

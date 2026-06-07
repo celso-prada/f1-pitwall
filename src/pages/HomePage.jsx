@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getCalendar, getLastRaceResults, getDriverStandings } from '../api/jolpica'
+import { getCalendar } from '../api/jolpica'
 import { useLiveTiming } from '../hooks/useLiveTiming'
+import { useDriverStandings, useLastRace } from '../hooks/useStandings'
 import { getNextRace, isToday, countdownUnits, raceISO } from '../utils/format'
 import { getTeamColor } from '../utils/teamColors'
 import { HERO_BG } from '../utils/images'
@@ -237,8 +238,8 @@ function LeaderCard({ standing, photos }) {
 
 export function HomePage() {
   const { data: races } = useQuery({ queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000 })
-  const { data: lastRace, isLoading: lastRaceLoading } = useQuery({ queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000 })
-  const { data: standings, isLoading: standingsLoading } = useQuery({ queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000 })
+  const { data: lastRace, isLoading: lastRaceLoading } = useLastRace()
+  const { data: standings, isLoading: standingsLoading } = useDriverStandings('current')
   const { data: live } = useLiveTiming()
 
   const photos = useDriverPhotos()

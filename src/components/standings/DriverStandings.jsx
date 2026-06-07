@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
-import { useQuery } from '@tanstack/react-query'
-import { getDriverStandings } from '../../api/jolpica'
+import { useDriverStandings } from '../../hooks/useStandings'
 import { getTeamColor } from '../../utils/teamColors'
 import { DRIVER_NAT_CODE } from '../../utils/flags'
 import { Flag } from '../ui/Flag'
@@ -91,11 +90,7 @@ function StandingRow({ standing, index, photos }) {
 
 export function DriverStandings({ season = 'current' }) {
   const photos = useDriverPhotos()
-  const { data: standings, isLoading } = useQuery({
-    queryKey: ['driverStandings', season],
-    queryFn: () => getDriverStandings(season),
-    staleTime: 300_000,
-  })
+  const { data: standings, isLoading } = useDriverStandings(season)
 
   if (isLoading) {
     return (

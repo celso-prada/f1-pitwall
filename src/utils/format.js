@@ -129,6 +129,22 @@ export function getNextRace(races, { now = Date.now(), liveRaceFinished = false 
   }) ?? (races ?? []).at(-1)
 }
 
+// Última corrida JÁ FINALIZADA (maior round concluído). Uma corrida conta como
+// concluída quando passou a janela de transmissão (isRaceOver) OU quando o feed
+// oficial confirmou a bandeirada (liveRaceFinished, só vale para a que já
+// largou). Usado para detectar quando os endpoints AGREGADOS da Jolpica estão
+// atrasados em relação ao que já correu (ver o "bridge" em useStandings).
+export function latestCompletedRound(races, { now = Date.now(), liveRaceFinished = false } = {}) {
+  let best = null
+  for (const r of races ?? []) {
+    const done = isRaceOver(r, now) || (liveRaceFinished && raceStarted(r, now))
+    if (!done) continue
+    const round = parseInt(r.round, 10)
+    if (!isNaN(round) && (!best || round > best.round)) best = { ...r, round }
+  }
+  return best
+}
+
 export function isToday(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const now = new Date()

@@ -11,6 +11,7 @@ import {
   raceISO,
   raceEndMs,
   isRaceOver,
+  latestCompletedRound,
   RACE_BROADCAST_MS,
 } from './format'
 
@@ -156,6 +157,29 @@ describe('getNextRace', () => {
       { date: '2020-01-01', time: '12:00:00Z', raceName: 'Y' },
     ]
     expect(getNextRace(past).raceName).toBe('Y')
+  })
+})
+
+describe('latestCompletedRound', () => {
+  const races = [
+    { date: '2030-01-01', time: '12:00:00Z', round: '1', raceName: 'R1' },
+    { date: '2030-01-08', time: '12:00:00Z', round: '2', raceName: 'R2' },
+    { date: '2030-02-01', time: '12:00:00Z', round: '3', raceName: 'R3' },
+  ]
+  it('retorna o maior round já concluído (janela de transmissão)', () => {
+    // depois do fim do round 2, antes do round 3
+    const now = Date.UTC(2030, 0, 8, 12) + RACE_BROADCAST_MS + 1000
+    expect(latestCompletedRound(races, { now }).round).toBe(2)
+  })
+  it('com bandeirada, conta a corrida que acabou de largar mesmo dentro da janela', () => {
+    const now = Date.UTC(2030, 1, 1, 13) // 1h após largada do round 3
+    expect(latestCompletedRound(races, { now, liveRaceFinished: true }).round).toBe(3)
+    // sem o sinal, o round 3 ainda não conta (dentro da janela de 4h)
+    expect(latestCompletedRound(races, { now }).round).toBe(2)
+  })
+  it('null quando nenhuma corrida foi concluída', () => {
+    const now = Date.UTC(2029, 0, 1)
+    expect(latestCompletedRound(races, { now })).toBe(null)
   })
 })
 

@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getDriverStandings } from '../api/jolpica'
+import { useDriverStandings } from '../hooks/useStandings'
 import { DriverStandings } from '../components/standings/DriverStandings'
 import { ConstructorStandings } from '../components/standings/ConstructorStandings'
 import { PageShell } from '../components/ui/PageShell'
@@ -12,11 +11,7 @@ export function StandingsPage() {
   const [tab, setTab] = useState('drivers')
   const navigate = useNavigate()
 
-  const { data: standings } = useQuery({
-    queryKey: ['driverStandings', 'current'],
-    queryFn: () => getDriverStandings('current'),
-    staleTime: 300_000,
-  })
+  const { data: standings } = useDriverStandings('current')
 
   const season = standings?.[0]?.Driver ? standings[0].season ?? 'atual' : 'atual'
 

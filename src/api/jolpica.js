@@ -251,6 +251,94 @@ export async function getLapTimes(season, round) {
   return laps
 }
 
+// --- Bridge pós-corrida ------------------------------------------------------
+// Logo após uma corrida, a Jolpica ingere os dados em endpoints diferentes em
+// momentos diferentes: os POR-PILOTO/POR-CONSTRUTOR (/drivers/{id}/...,
+// /constructors/{id}/...) atualizam ANTES dos AGREGADOS (/driverStandings,
+// /constructorStandings, /current/last/results). Por isso a home/classificação
+// (que leem agregados) ficavam mostrando a corrida anterior enquanto a página do
+// piloto (por-piloto) já mostrava a pontuação nova.
+//
+// Estas funções reconstroem o agregado a partir dos endpoints por-piloto frescos
+// SOMENTE durante essa janela de defasagem (ver useStandings). Retornam `null`
+// quando o por-piloto ainda não avançou (= nada a corrigir) para o chamador cair
+// no agregado e seguir tentando até o dado fresco aparecer. f1api.dev não serve
+// aqui: a numeração de rounds dele não bate com a Jolpica (o "round 6" dele é
+// outra corrida), então o bridge é Jolpica-only — se a Jolpica estiver fora, as
+// chamadas falham e devolvemos `null` (sem piorar nada).
+
+async function getDriverSeasonRow(driverId) {
+  const data = await get(`/current/drivers/${driverId}/driverStandings.json`)
+  return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings?.[0] ?? null
+}
+
+async function getConstructorSeasonRow(constructorId) {
+  const data = await get(`/current/constructors/${constructorId}/constructorStandings.json`)
+  return data.MRData.StandingsTable.StandingsLists[0]?.ConstructorStandings?.[0] ?? null
+}
+
+async function getDriverRoundResult(driverId, round) {
+  const data = await get(`/current/drivers/${driverId}/results.json`)
+  const race = (data.MRData.RaceTable.Races ?? []).find(r => parseInt(r.round, 10) === round)
+  return race?.Results?.[0] ? { ...race.Results[0] } : null
+}
+
+const num = v => parseFloat(v) || 0
+const reposition = list => { list.forEach((s, i) => { s.position = String(i + 1) }); return list }
+
+// Reconstrói a classificação de pilotos a partir dos endpoints por-piloto.
+// Retorna null se nada mudou (por-piloto ainda igual ao agregado).
+export async function bridgeDriverStandings(aggregate) {
+  if (jolpicaDown() || !aggregate?.length) return null
+  const settled = await Promise.allSettled(aggregate.map(s => getDriverSeasonRow(s.Driver.driverId)))
+  let changed = false
+  const merged = aggregate.map((s, i) => {
+    const v = settled[i].status === 'fulfilled' ? settled[i].value : null
+    if (v && num(v.points) !== num(s.points)) changed = true
+    return v && v.points != null ? v : s
+  })
+  if (!changed) return null
+  merged.sort((a, b) => num(b.points) - num(a.points) || num(b.wins) - num(a.wins))
+  return reposition(merged)
+}
+
+export async function bridgeConstructorStandings(aggregate) {
+  if (jolpicaDown() || !aggregate?.length) return null
+  const settled = await Promise.allSettled(aggregate.map(s => getConstructorSeasonRow(s.Constructor.constructorId)))
+  let changed = false
+  const merged = aggregate.map((s, i) => {
+    const v = settled[i].status === 'fulfilled' ? settled[i].value : null
+    if (v && num(v.points) !== num(s.points)) changed = true
+    return v && v.points != null ? v : s
+  })
+  if (!changed) return null
+  merged.sort((a, b) => num(b.points) - num(a.points) || num(b.wins) - num(a.wins))
+  return reposition(merged)
+}
+
+// Monta o resultado da última corrida (pódio) do round recém-concluído a partir
+// dos resultados por-piloto. `calendarRace` traz nome/data/circuito/round (o
+// agregado /last/results ainda aponta para o round anterior). Retorna null se os
+// resultados do round ainda não foram ingeridos por-piloto.
+export async function bridgeLastRace(calendarRace, driverIds) {
+  if (jolpicaDown() || !calendarRace || !driverIds?.length) return null
+  const round = parseInt(calendarRace.round, 10)
+  const settled = await Promise.allSettled(driverIds.map(id => getDriverRoundResult(id, round)))
+  const results = settled
+    .filter(s => s.status === 'fulfilled' && s.value)
+    .map(s => s.value)
+    .sort((a, b) => (parseInt(a.position, 10) || 99) - (parseInt(b.position, 10) || 99))
+  if (!results.length) return null
+  return {
+    season: calendarRace.season,
+    round: calendarRace.round,
+    raceName: calendarRace.raceName,
+    date: calendarRace.date,
+    Circuit: calendarRace.Circuit,
+    Results: results,
+  }
+}
+
 export async function getCurrentSeason() {
   return withFallback('currentSeason',
     async () => {

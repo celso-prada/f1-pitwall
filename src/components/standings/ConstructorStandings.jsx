@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
-import { useQuery } from '@tanstack/react-query'
-import { getConstructorStandings } from '../../api/jolpica'
+import { useConstructorStandings } from '../../hooks/useStandings'
 import { getTeamColor } from '../../utils/teamColors'
 import { CONSTRUCTOR_NAT_CODE } from '../../utils/flags'
 import { Flag } from '../ui/Flag'
@@ -9,11 +8,7 @@ import { useNavigate } from 'react-router-dom'
 
 export function ConstructorStandings({ season = 'current' }) {
   const navigate = useNavigate()
-  const { data: standings, isLoading } = useQuery({
-    queryKey: ['constructorStandings', season],
-    queryFn: () => getConstructorStandings(season),
-    staleTime: 300_000,
-  })
+  const { data: standings, isLoading } = useConstructorStandings(season)
 
   if (isLoading) {
     return (
