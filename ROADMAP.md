@@ -127,3 +127,85 @@ reais (sem mock), PT-BR, publicada no Vercel.
   `CarData.z.jsonStream` (~7,5MB) e `Position.z.jsonStream` (~8MB) acessíveis
   pós-sessão, além de `TimingData`/`TimingAppData`/`SessionInfo`. Formato e
   detalhes em `DATA_SOURCES.md`. Implementação de 4.1 (e 1.2/3.1) liberada.
+
+---
+
+## 8. Mapa de pista com bolinhas dos pilotos — PLANO DE EXECUÇÃO
+
+> Pesquisa + **probe ao vivo durante o GP de Mônaco (2026-06)** já feitos. Esta
+> seção é o passo a passo para implementar depois. **Não codar ainda** — é o
+> blueprint a seguir quando formos executar.
+
+### 8.0 Achados do teste AO VIVO (Mônaco 2026-06) — a verdade de campo
+Escutei o feed oficial (`signalrcore`) por ~10s **durante a corrida**, assinando
+explicitamente `Position.z` e `CarData.z`. Resultado medido:
+- **108 deltas de `TimingData`** chegaram normalmente (timing flui ao vivo). ✅
+- **0 deltas de `Position.z`** e **0 de `CarData.z`** em 10s; o snapshot inicial
+  (type 3 do Subscribe) só trouxe `TimingData` + `Heartbeat`. ❌
+- **Conclusão definitiva:** a posição (X/Y) e a telemetria estão **retidas no
+  feed gratuito** desde ~ago/2025 (restrição confirmada desde o GP da Holanda).
+  Só liberam com login F1 TV pago. **Bolinha ao vivo de verdade = inviável grátis.**
+- **Mas:** o contorno do circuito e a posição **pós-sessão** existem e funcionam
+  (ver 8.1). Então o caminho é **mapa estático + replay pós-sessão**, com o modo
+  ao vivo já preparado para "acender" caso a F1 volte a liberar `Position`.
+
+### 8.1 Fontes confirmadas (o que temos pra desenhar)
+1. **Traçado do circuito — MultiViewer API.** Testada ao vivo p/ Mônaco: HTTP 200,
+   `rotation: 315°`, **683 pontos** de traçado (`x`/`y`), **19 curvas**.
+   - Endpoint: `https://api.multiviewer.app/api/v1/circuits/{circuitKey}/{year}`
+   - `circuitKey` vem do `SessionInfo.Meeting.Circuit.Key` do feed oficial
+     (Mônaco = 22). Mapear nossos `circuitId` (Jolpica) → `circuitKey` numa tabela.
+   - Retorna `x[]`, `y[]` (linha do traçado), `corners[]` (nº + posição), `rotation`.
+   - **Redundância (obrigatória, padrão do projeto):** se a MultiViewer cair,
+     **derivar o traçado das próprias coordenadas `Position.z`** — a nuvem de
+     pontos X/Y de uma volta limpa desenha o circuito. Fallback auto-suficiente.
+2. **Posição dos carros — `Position.z.jsonStream` (arquivo oficial pós-sessão).**
+   ~8MB, confirmado acessível após a sessão. Cada entrada tem timestamp + X/Y/Z
+   por carro (`Entries[].Cars[racingNumber] = {X, Y, Z, Status}`). Comprimido
+   (deflate base64, o `.z`) — inflar igual já fazemos em `_f1live.mjs`.
+3. **Telemetria por carro — `CarData.z.jsonStream`** (~7,5MB, pós-sessão): RPM,
+   velocidade, marcha, throttle, brake, DRS. Para colorir/anotar a bolinha (4.1).
+
+### 8.2 Arquitetura proposta
+- **Endpoint serverless `/api/replay`** (espelhar o padrão de `/api/live`; servir
+  em dev pelo Vite plugin). Params: `path` da sessão (vem de `SessionInfo.Path`),
+  `topic` (`Position.z` etc.). Responsabilidades:
+  - baixar o `.jsonStream` do arquivo oficial estático;
+  - parsear linhas `HH:MM:SS.mmm{json-delta}\r\n` (helper compartilhado — o mesmo
+    parser serve 1.2 e 3.1);
+  - inflar o `.z` (deflate) e devolver JSON já normalizado;
+  - **cachear no edge** (arquivo é imutável pós-sessão → cache longo).
+- **Parser compartilhado `parseJsonStream()`** em `api/_archive.mjs` (novo):
+  usado por 8 (mapa), 1.2 (resultados) e 3.1 (replay). Uma fonte, três features.
+- **Tabela `circuitKey`** (`src/utils/circuits.js`): `circuitId` → `{ key, rotation? }`.
+- **Component `TrackMap`** (SVG): desenha o `path` do traçado (viewBox a partir do
+  min/max de X/Y + `rotation`), uma `<circle>` por piloto na cor da equipe + TLA.
+  Reaproveitar `useFollowedDrivers` p/ destacar os fixados.
+- **`useReplayClock`** (hook): timeline com scrub (3.1) — varre os timestamps,
+  interpola X/Y entre amostras p/ animação suave; play/pause/velocidade.
+
+### 8.3 Modo ao vivo (preparado, mas "apagado" por ora)
+- O `TrackMap` aceita um feed de posições genérico. No ao vivo, plugar no
+  `/api/live`: **se** `Position.z` vier preenchido (hoje vem vazio), as bolinhas
+  se movem em tempo real; se vier vazio, mostrar o traçado com aviso discreto
+  ("posição ao vivo indisponível no feed aberto — disponível no replay").
+- Assim, no dia em que a F1 reabrir o `Position`, o ao vivo "acende" sem reescrever
+  nada. Custo zero de manter preparado.
+
+### 8.4 Ordem de implementação (quando for executar)
+1. `parseJsonStream()` + `/api/replay` (base compartilhada com 1.2/3.1) + teste.
+2. Tabela `circuitKey` + fetch MultiViewer com fallback de coords. `TrackMap` SVG
+   estático (traçado + curvas), sem carros ainda.
+3. Plotar bolinhas de UM instante do `Position.z` (prova visual rápida).
+4. `useReplayClock` + timeline scrub (3.1) → "passar o filme" da corrida.
+5. Anexar `CarData.z` (4.1): velocidade/DRS na bolinha selecionada.
+6. Modo ao vivo condicional (8.3).
+
+### 8.5 Riscos / cuidados
+- **Não quebrar `/live`:** mapa é página/painel novo; o ao vivo atual não muda.
+- **Peso:** `.jsonStream` é grande — processar no serverless e mandar só o
+  necessário (downsample de amostras p/ ~5–10Hz; não despejar 8MB no cliente).
+- **CORS/headers:** o estático oficial às vezes exige headers específicos — já
+  resolvido no padrão `/api/live`; reusar.
+- **Disponibilidade:** arquivo só existe **após** a sessão (e alguns minutos de
+  processamento). Antes disso, o modo replay não tem dados — tratar com clareza.
