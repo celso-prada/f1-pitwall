@@ -2,7 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
-import { getRaceResults, getQualifyingResults, getLapTimes } from '../api/jolpica'
+import { getQualifyingResults, getLapTimes } from '../api/jolpica'
+import { useRaceResults } from '../hooks/useStandings'
 import { getTeamColor } from '../utils/teamColors'
 import { getCircuitImage } from '../utils/images'
 import { formatDate } from '../utils/format'
@@ -88,11 +89,7 @@ export function RacePage() {
   const navigate = useNavigate()
   const [view, setView] = useState('results')
 
-  const { data: race, isLoading: raceLoading } = useQuery({
-    queryKey: ['raceResults', season, round],
-    queryFn: () => getRaceResults(season, round),
-    staleTime: 3_600_000,
-  })
+  const { data: race, isLoading: raceLoading } = useRaceResults(season, round)
   const { data: quali } = useQuery({
     queryKey: ['qualifying', season, round],
     queryFn: () => getQualifyingResults(season, round),
@@ -150,63 +147,61 @@ export function RacePage() {
         <div className="absolute top-0 left-0 right-0 h-px"
           style={{ background: `linear-gradient(90deg, transparent, ${winnerColor}, transparent)` }} />
 
-        {/* Circuit image + race info row */}
-        <div className="flex flex-col sm:flex-row">
-          {/* Circuit image */}
-          {circuitImageUrl && (
-            <div
-              className="w-full sm:w-52 md:w-60 flex-shrink-0 flex items-center justify-center"
-              style={{
-                background: 'var(--color-bg)',
-                borderBottom: '1px solid var(--color-border-mute)',
-                minHeight: 140,
-              }}
-            >
-              <img
-                src={circuitImageUrl}
-                alt={`${circuit?.circuitName} layout`}
-                className="max-h-36 w-full object-contain p-4 sm:p-5"
-                onError={e => { e.target.parentElement.style.display = 'none' }}
-              />
+        {/* Imagem do circuito — banner proeminente no TOPO (igual à página do
+            circuito, para corridas já realizadas). */}
+        {circuitImageUrl && (
+          <div
+            className="w-full flex items-center justify-center"
+            style={{
+              background: 'var(--color-bg)',
+              borderBottom: '1px solid var(--color-border-mute)',
+              minHeight: 160,
+            }}
+          >
+            <img
+              src={circuitImageUrl}
+              alt={`${circuit?.circuitName} layout`}
+              className="max-h-52 sm:max-h-60 w-full object-contain p-5 sm:p-6"
+              onError={e => { e.target.parentElement.style.display = 'none' }}
+            />
+          </div>
+        )}
+
+        {/* Info da corrida + vencedor */}
+        <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="num text-[9px] text-text-mute uppercase tracking-wider">
+                {season} · Round {round}
+              </span>
+            </div>
+            <h1 className="font-display font-bold text-2xl sm:text-3xl text-text uppercase leading-tight">
+              {race.raceName}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-text-mute">
+              <div className="flex items-center gap-1">
+                <MapPin size={11} aria-hidden />
+                {circuit?.Location?.locality}, {circuit?.Location?.country}
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock size={11} aria-hidden />
+                {formatDate(race.date)}
+              </div>
+            </div>
+          </div>
+
+          {winner && (
+            <div className="sm:text-right flex-shrink-0">
+              <div className="text-[9px] text-text-mute mb-1">Vencedor</div>
+              <div className="font-display font-bold text-base sm:text-lg uppercase text-text leading-tight">
+                {winner.Driver.givenName[0]}. {winner.Driver.familyName}
+              </div>
+              <div className="text-xs" style={{ color: winnerColor }}>{winner.Constructor.name}</div>
+              {winner.Time && (
+                <div className="num text-[9px] text-text-mute mt-1">{winner.Time.time}</div>
+              )}
             </div>
           )}
-
-          {/* Race info */}
-          <div className="flex-1 p-4 sm:p-6 flex flex-col justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="num text-[9px] text-text-mute uppercase tracking-wider">
-                  {season} · Round {round}
-                </span>
-              </div>
-              <h1 className="font-display font-bold text-2xl sm:text-3xl text-text uppercase leading-tight">
-                {race.raceName}
-              </h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-text-mute">
-                <div className="flex items-center gap-1">
-                  <MapPin size={11} aria-hidden />
-                  {circuit?.Location?.locality}, {circuit?.Location?.country}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock size={11} aria-hidden />
-                  {formatDate(race.date)}
-                </div>
-              </div>
-            </div>
-
-            {winner && (
-              <div>
-                <div className="text-[9px] text-text-mute mb-1">Vencedor</div>
-                <div className="font-display font-bold text-base sm:text-lg uppercase text-text leading-tight">
-                  {winner.Driver.givenName[0]}. {winner.Driver.familyName}
-                </div>
-                <div className="text-xs" style={{ color: winnerColor }}>{winner.Constructor.name}</div>
-                {winner.Time && (
-                  <div className="num text-[9px] text-text-mute mt-1">{winner.Time.time}</div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Podium */}

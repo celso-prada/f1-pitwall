@@ -316,11 +316,12 @@ export async function bridgeConstructorStandings(aggregate) {
   return reposition(merged)
 }
 
-// Monta o resultado da última corrida (pódio) do round recém-concluído a partir
-// dos resultados por-piloto. `calendarRace` traz nome/data/circuito/round (o
-// agregado /last/results ainda aponta para o round anterior). Retorna null se os
-// resultados do round ainda não foram ingeridos por-piloto.
-export async function bridgeLastRace(calendarRace, driverIds) {
+// Monta o resultado de um round (pódio + tabela) a partir dos resultados
+// por-piloto, quando o agregado (/last/results ou /{round}/results) ainda está
+// atrasado. `calendarRace` traz nome/data/circuito/round. Retorna null se os
+// resultados do round ainda não foram ingeridos por-piloto. Usado tanto para a
+// "última corrida" da home quanto para a página de uma corrida (RacePage).
+export async function bridgeRaceResults(calendarRace, driverIds) {
   if (jolpicaDown() || !calendarRace || !driverIds?.length) return null
   const round = parseInt(calendarRace.round, 10)
   const settled = await Promise.allSettled(driverIds.map(id => getDriverRoundResult(id, round)))

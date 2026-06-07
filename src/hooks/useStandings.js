@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   getCalendar, getDriverStandings, getConstructorStandings, getLastRaceResults,
-  bridgeDriverStandings, bridgeConstructorStandings, bridgeLastRace,
+  getRaceResults, bridgeDriverStandings, bridgeConstructorStandings, bridgeRaceResults,
 } from '../api/jolpica'
 import { useLiveTiming } from './useLiveTiming'
-import { latestCompletedRound } from '../utils/format'
+import { latestCompletedRound, raceStarted } from '../utils/format'
 
 // Detecta a DEFASAGEM dos endpoints agregados da Jolpica logo após uma corrida:
 // o último round já concluído (calendário + bandeirada do feed) está à frente do
@@ -85,11 +85,49 @@ export function useLastRace() {
 
   const bridge = useQuery({
     queryKey: ['lastRace', 'bridge', staleRound],
-    queryFn: () => bridgeLastRace(staleRace, driverIds),
+    queryFn: () => bridgeRaceResults(staleRace, driverIds),
     enabled: active,
     staleTime: 600_000,
     refetchInterval: untilFresh,
   })
 
   return { data: (active && bridge.data) || base.data, isLoading: base.isLoading }
+}
+
+// Resultado de UMA corrida (RacePage). Se o agregado /{round}/results ainda
+// estiver vazio para uma corrida que já largou (lag pós-corrida), reconstrói do
+// por-piloto — assim Mônaco (e qualquer corrida recém-finalizada) já mostra
+// pódio/tabela na própria página em vez de "corrida não encontrada".
+export function useRaceResults(season, round) {
+  const base = useQuery({
+    queryKey: ['raceResults', season, round],
+    queryFn: () => getRaceResults(season, round),
+    staleTime: 3_600_000,
+  })
+  const { data: calendar } = useQuery({
+    queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000,
+  })
+  const { data: drivers } = useQuery({
+    queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000,
+  })
+
+  const calRace = (calendar ?? []).find(
+    r => String(r.round) === String(round) && String(r.season) === String(season),
+  )
+  const driverIds = (drivers ?? []).map(s => s.Driver.driverId)
+  // Só faz bridge quando o agregado veio vazio para uma corrida (do calendário
+  // atual) que já largou; senão é uma corrida histórica/normal e o agregado basta.
+  const active = !base.data && !!calRace && raceStarted(calRace) && driverIds.length > 0
+
+  const bridge = useQuery({
+    queryKey: ['raceResults', season, round, 'bridge'],
+    queryFn: () => bridgeRaceResults(calRace, driverIds),
+    enabled: active,
+    staleTime: 600_000,
+    refetchInterval: untilFresh,
+  })
+
+  const data = base.data ?? (active ? bridge.data : null)
+  const isLoading = base.isLoading || (active && !bridge.data && bridge.isFetching)
+  return { data, isLoading }
 }

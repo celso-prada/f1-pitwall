@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
-import { formatDate, isToday, isRaceOver } from '../../utils/format'
+import { useLiveTiming } from '../../hooks/useLiveTiming'
+import { formatDate, isRaceOver, raceStarted } from '../../utils/format'
 import { CIRCUIT_COUNTRY } from '../../utils/flags'
 import { Flag } from '../ui/Flag'
 import { useNavigate } from 'react-router-dom'
@@ -15,6 +16,12 @@ export function RaceCalendar({ season = 'current', compact = false }) {
     queryFn: () => getCalendar(season),
     staleTime: 3_600_000,
   })
+  // Feed oficial — só redirecionamos para /ao vivo quando há transmissão DE FATO.
+  // raceFinished = bandeirada confirmada (feed parou e reporta a corrida como
+  // evento recente) → a corrida que acabou de largar já conta como concluída.
+  const { data: live } = useLiveTiming()
+  const liveNow = !!live?.live
+  const raceFinished = !!live && live.live === false && live.recentEvent?.type === 'Race'
 
   if (isLoading) {
     return (
@@ -35,16 +42,23 @@ export function RaceCalendar({ season = 'current', compact = false }) {
   return (
     <div className={compact ? 'space-y-1.5' : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5'}>
       {list.map((race, i) => {
-        const isPast = isRaceOver(race, now)
+        // "Largou e está na janela de transmissão" — a corrida em andamento (ou
+        // que acabou de terminar). Só pode haver uma por vez.
+        const inWindow = raceStarted(race, now) && !isRaceOver(race, now)
+        // Concluída = passou a janela de 4h OU a bandeirada já foi confirmada.
+        const isPast = isRaceOver(race, now) || (raceFinished && inWindow)
         const isNext = !compact
           ? (!isPast && (races ?? []).slice(0, parseInt(race.round) - 1).every(r => isRaceOver(r, now)))
           : (!isPast && list.slice(0, i).every(r => isRaceOver(r, now)))
         const countryCode = CIRCUIT_COUNTRY[race.Circuit.circuitId] ?? null
 
-        const raceDay = isToday(race.date)
+        // /live só enquanto a corrida acontece AGORA (já largou, ainda não
+        // terminou) E o feed está transmitindo. Terminada a corrida, o clique
+        // leva à página dela (resultado/pódio); futura, ao circuito.
+        const inProgress = liveNow && inWindow && !raceFinished
         const handleClick = () => {
-          if (raceDay) navigate('/live')
-          else if (isPast) navigate(`/race/${race.season ?? season}/${race.round}`)
+          if (inProgress) navigate('/live')
+          else if (raceStarted(race, now)) navigate(`/race/${race.season ?? season}/${race.round}`)
           else navigate(`/circuit/${race.Circuit.circuitId}`)
         }
 

@@ -36,6 +36,8 @@ const CIRCUIT_MAP = {
   vegas:         'Las Vegas Strip Circuit.webp',
   losail:        'Lusail International Circuit.webp',
   madrid:        'Madring_Madrid Street Circuit.webp',
+  // A Jolpica usa o circuitId "madring" (o f1api usa "madrid") — mapeia os dois.
+  madring:       'Madring_Madrid Street Circuit.webp',
   marina_bay:    'Marina Bay Street Circuit.webp',
   miami:         'Miami International Autodrome.webp',
   monaco:        'Monaco.webp',

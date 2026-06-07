@@ -25,6 +25,7 @@ export const CIRCUIT_OPENF1_NAME = {
   monaco: 'Monaco',
   villeneuve: 'Montréal',
   madrid: 'Madrid',
+  madring: 'Madrid',
   catalunya: 'Catalunya',
   red_bull_ring: 'Red Bull Ring',
   silverstone: 'Silverstone',
@@ -46,7 +47,7 @@ export const CIRCUIT_OPENF1_NAME = {
 export const CIRCUIT_COUNTRY = {
   bahrain: 'bh', jeddah: 'sa', albert_park: 'au', suzuka: 'jp',
   shanghai: 'cn', miami: 'us', imola: 'it', monaco: 'mc',
-  villeneuve: 'ca', madrid: 'es', catalunya: 'es', red_bull_ring: 'at',
+  villeneuve: 'ca', madrid: 'es', madring: 'es', catalunya: 'es', red_bull_ring: 'at',
   silverstone: 'gb', hungaroring: 'hu', spa: 'be',
   zandvoort: 'nl', monza: 'it', baku: 'az', marina_bay: 'sg',
   americas: 'us', rodriguez: 'mx', interlagos: 'br',
