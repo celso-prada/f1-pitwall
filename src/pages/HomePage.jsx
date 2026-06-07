@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar, getLastRaceResults, getDriverStandings } from '../api/jolpica'
 import { useLiveTiming } from '../hooks/useLiveTiming'
-import { getNextRace, isToday, countdownUnits } from '../utils/format'
+import { getNextRace, isToday, countdownUnits, raceISO } from '../utils/format'
 import { getTeamColor } from '../utils/teamColors'
 import { HERO_BG } from '../utils/images'
 import { DRIVER_NAT_CODE } from '../utils/flags'
@@ -243,7 +243,7 @@ export function HomePage() {
 
   const photos = useDriverPhotos()
   const nextRace = getNextRace(races ?? [])
-  const raceDateTime = nextRace ? `${nextRace.date}T${nextRace.time ?? '00:00:00'}` : null
+  const raceDateTime = nextRace ? raceISO(nextRace.date, nextRace.time) : null
   const raceDay = nextRace ? isToday(nextRace.date) : false
   const leader = standings?.[0]
   const heroBg = HERO_BG

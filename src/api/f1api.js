@@ -122,7 +122,9 @@ const mapRace = (r, season) => ({
   round: String(r.round),
   raceName: r.raceName,
   date: r.schedule?.race?.date ?? r.date,
-  time: (r.schedule?.race?.time ?? r.time)?.replace('Z', '') ?? null,
+  // Mantém o "Z": o horário é UTC e remover o fuso fazia o JS interpretar como
+  // horário local, errando o countdown pelo offset do aparelho (ex.: +3h no BR).
+  time: (r.schedule?.race?.time ?? r.time) ?? null,
   Circuit: {
     circuitId: r.circuit?.circuitId,
     circuitName: r.circuit?.circuitName,

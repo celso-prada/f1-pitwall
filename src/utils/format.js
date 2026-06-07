@@ -72,11 +72,44 @@ export function countdownUnits(c) {
   return units.slice(start)
 }
 
+// Monta o instante da corrida em ISO SEMPRE em UTC. A Jolpica dá o horário com
+// "Z" (ex.: "13:00:00Z"); o fallback f1api.dev às vezes vem sem. Uma string de
+// data-hora SEM fuso é interpretada pelo JS como horário LOCAL do dispositivo,
+// então o countdown errava pelo offset do aparelho (ex.: +3h no Brasil) e ficava
+// inconsistente entre fontes/celulares. Aqui garantimos o "Z" quando falta.
+export function raceISO(date, time, fallback = '00:00:00') {
+  if (!date) return null
+  const t = time || fallback
+  const hasTz = /(Z|[+-]\d{2}:?\d{2})$/.test(t)
+  return `${date}T${hasTz ? t : `${t}Z`}`
+}
+
+// Janela após a largada em que a corrida ainda conta como "a atual" — cobre a
+// transmissão ao vivo (corrida ~2h + atrasos/bandeira vermelha + pódio). Só
+// DEPOIS dela o sistema aponta para a próxima. Assim, em dia de corrida, o
+// calendário e o cronômetro seguem na corrida atual até a transmissão acabar.
+export const RACE_BROADCAST_MS = 4 * 60 * 60 * 1000
+
+// Fim estimado da transmissão da corrida (largada + janela). NaN se não dá pra
+// montar a data.
+export function raceEndMs(race) {
+  if (!race?.date) return NaN
+  const start = new Date(raceISO(race.date, race.time, '23:59:59')).getTime()
+  return isNaN(start) ? NaN : start + RACE_BROADCAST_MS
+}
+
+// A corrida (e sua transmissão) já terminou?
+export function isRaceOver(race, now = Date.now()) {
+  const end = raceEndMs(race)
+  return !isNaN(end) && end < now
+}
+
 export function getNextRace(races) {
   const now = Date.now()
-  // A corrida continua sendo "a próxima" até o horário REAL de largada (não só
-  // até a meia-noite do dia), para o countdown poder chegar a zero no dia.
-  return races.find(r => new Date(`${r.date}T${r.time ?? '23:59:59'}`).getTime() >= now) ?? races.at(-1)
+  // "A próxima" segue sendo a corrida ATUAL durante toda a transmissão ao vivo;
+  // só depois que ela acaba é que apontamos para a seguinte. O countdown chega a
+  // zero na largada (vira "ao vivo") e só troca de alvo quando a corrida termina.
+  return (races ?? []).find(r => !isRaceOver(r, now)) ?? (races ?? []).at(-1)
 }
 
 export function isToday(dateStr) {

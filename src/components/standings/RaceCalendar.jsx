@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
-import { formatDate, isToday } from '../../utils/format'
+import { formatDate, isToday, isRaceOver } from '../../utils/format'
 import { CIRCUIT_COUNTRY } from '../../utils/flags'
 import { Flag } from '../ui/Flag'
 import { useNavigate } from 'react-router-dom'
@@ -24,19 +24,21 @@ export function RaceCalendar({ season = 'current', compact = false }) {
     )
   }
 
-  const now = new Date()
+  const now = new Date().getTime()
+  // "Passou" = a transmissão da corrida acabou (largada + janela), não a
+  // meia-noite da data — assim, em dia de corrida, a atual continua marcada como
+  // PRÓXIMA durante todo o ao vivo e só sai da lista quando termina.
   const list = compact
-    ? (races ?? []).filter(r => new Date(r.date) >= now).slice(0, 6)
+    ? (races ?? []).filter(r => !isRaceOver(r, now)).slice(0, 6)
     : races ?? []
 
   return (
     <div className={compact ? 'space-y-1.5' : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5'}>
       {list.map((race, i) => {
-        const raceDate = new Date(race.date)
-        const isPast = raceDate < now
+        const isPast = isRaceOver(race, now)
         const isNext = !compact
-          ? (!isPast && (races ?? []).slice(0, parseInt(race.round) - 1).every(r => new Date(r.date) < now))
-          : (!isPast && list.slice(0, i).every(r => new Date(r.date) < now))
+          ? (!isPast && (races ?? []).slice(0, parseInt(race.round) - 1).every(r => isRaceOver(r, now)))
+          : (!isPast && list.slice(0, i).every(r => isRaceOver(r, now)))
         const countryCode = CIRCUIT_COUNTRY[race.Circuit.circuitId] ?? null
 
         const raceDay = isToday(race.date)

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getCalendar } from '../../api/jolpica'
 import { useLiveTiming } from '../../hooks/useLiveTiming'
 import { useCountdown } from '../../hooks/useCountdown'
-import { getNextRace, isToday, countdownUnits } from '../../utils/format'
+import { getNextRace, isToday, countdownUnits, raceISO } from '../../utils/format'
 import { TickerBar } from '../live/TickerBar'
 import { Radio, BarChart2, Calendar, Home, Headphones, Gauge, Activity, Maximize2, Minimize2 } from 'lucide-react'
 import { useFullscreen } from '../../hooks/useFullscreen'
@@ -28,7 +28,7 @@ function NextRaceCountdown() {
   })
 
   const nextRace = getNextRace(races ?? [])
-  const raceDateTime = nextRace ? `${nextRace.date}T${nextRace.time ?? '00:00:00'}` : null
+  const raceDateTime = nextRace ? raceISO(nextRace.date, nextRace.time) : null
   const countdown = useCountdown(raceDateTime)
 
   if (!nextRace || !countdown) return null
