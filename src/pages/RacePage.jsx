@@ -9,6 +9,7 @@ import { getCircuitImage } from '../utils/images'
 import { formatDate, cleanRaceName } from '../utils/format'
 import { RaceTable } from '../components/race/RaceTable'
 import { PositionChangeChart } from '../components/race/LapChart'
+import { CircuitWinners } from '../components/race/CircuitWinners'
 import { Panel } from '../components/ui/Panel'
 import { PageShell } from '../components/ui/PageShell'
 import { Skeleton } from '../components/ui/Skeleton'
@@ -302,6 +303,10 @@ export function RacePage() {
           )}
         </Panel>
       )}
+
+      {/* Relação histórica de vencedores deste circuito (igual à página do
+          circuito), com link para cada piloto — abaixo do resultado da corrida. */}
+      {circuit?.circuitId && <CircuitWinners circuitId={circuit.circuitId} />}
     </PageShell>
   )
 }

@@ -3,14 +3,14 @@ import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { getCircuitResults, getCalendar } from '../api/jolpica'
 import { getCircuitInfo } from '../api/f1api'
-import { getTeamColor } from '../utils/teamColors'
 import { getCircuitImage } from '../utils/images'
-import { DRIVER_NAT_CODE, CIRCUIT_COUNTRY } from '../utils/flags'
+import { CIRCUIT_COUNTRY } from '../utils/flags'
 import { Skeleton } from '../components/ui/Skeleton'
 import { Flag } from '../components/ui/Flag'
 import { PageShell } from '../components/ui/PageShell'
 import { Panel } from '../components/ui/Panel'
-import { ArrowLeft, MapPin, Clock, Trophy, Calendar, Ruler, CornerUpRight, Timer, Flag as FlagLine } from 'lucide-react'
+import { CircuitWinners } from '../components/race/CircuitWinners'
+import { ArrowLeft, MapPin, Calendar, Ruler, CornerUpRight, Timer, Flag as FlagLine } from 'lucide-react'
 
 const SESSION_PT = {
   'Practice 1': 'Treino Livre 1',
@@ -310,58 +310,8 @@ export function CircuitPage() {
           <WeekendSchedule sessions={scheduleSessions} raceName={gpName} season={new Date().getFullYear()} />
         </div>
 
-        {/* Right: all-time winners */}
-        <Panel
-          title={`Todos os Vencedores${sorted.length ? ` · ${sorted.length}` : ''}`}
-          icon={<Trophy size={13} aria-hidden />}
-        >
-          {/* On mobile the list flows into the page so you can scroll the whole
-              page to the last winner (the page reserves the menu height below).
-              On xl the layout is two columns, so we bound + scroll it there. */}
-          <div className="mt-2 xl:overflow-y-auto xl:max-h-[480px]">
-            {!sorted.length && (
-              <div className="text-center text-text-mute py-10 text-sm">
-                {isLoading ? 'Carregando vencedores…' : 'Histórico de vencedores indisponível'}
-              </div>
-            )}
-            {sorted.map((race, i) => {
-              const winner = race.Results?.[0]
-              if (!winner) return null
-              const color   = getTeamColor(winner.Constructor.name)
-              const natCode = DRIVER_NAT_CODE[winner.Driver.nationality]
-              return (
-                <motion.div
-                  key={race.season}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: Math.min(i * 0.02, 0.4) }}
-                  className="flex items-center gap-3 py-1.5 px-3 rounded-lg cursor-pointer transition-colors hover:bg-[var(--color-surface-2)]"
-                  style={{ borderBottom: '1px solid var(--color-border-mute)' }}
-                  onClick={() => navigate(`/driver/${winner.Driver.driverId}`)}
-                >
-                  <div className="num font-black text-sm w-10 flex-shrink-0" style={{ color: i === 0 ? 'var(--color-gold)' : 'var(--color-text-mute)' }}>
-                    {race.season}
-                  </div>
-                  <Flag code={natCode} size={13} />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-bold text-text">
-                      {winner.Driver.givenName} {winner.Driver.familyName}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-right flex-shrink-0 hidden xs:block" style={{ color }}>
-                    {winner.Constructor.name}
-                  </div>
-                  {winner.Time?.time && (
-                    <div className="items-center gap-1 num text-[9px] text-text-mute min-w-max hidden sm:flex">
-                      <Clock size={9} aria-hidden />
-                      {winner.Time.time}
-                    </div>
-                  )}
-                </motion.div>
-              )
-            })}
-          </div>
-        </Panel>
+        {/* Right: all-time winners (componente compartilhado com a RacePage) */}
+        <CircuitWinners circuitId={circuitId} />
       </div>
     </PageShell>
   )

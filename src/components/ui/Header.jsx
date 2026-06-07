@@ -97,7 +97,7 @@ const NAV = [
   { path: '/',           label: 'Home',          short: 'Home',     icon: Home },
   { path: '/live',       label: 'Ao Vivo',       short: 'Ao Vivo',  icon: Radio },
   { path: '/standings',  label: 'Classificação', short: 'Classif.', icon: BarChart2 },
-  { path: '/calendar',   label: 'Calendário',    short: 'Agenda',   icon: Calendar },
+  { path: '/calendar',   label: 'Calendário',    short: 'Calendário', icon: Calendar },
   { path: '/radio',      label: 'Rádio',         short: 'Rádio',    icon: Headphones },
   { path: '/telemetria', label: 'Telemetria',    short: 'Telem.',   icon: Gauge },
 ]
