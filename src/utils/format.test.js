@@ -135,6 +135,21 @@ describe('getNextRace', () => {
     Date.now = () => start + 60 * 60 * 1000
     try { expect(getNextRace(racesNow).raceName).toBe('Atual') } finally { Date.now = realNow }
   })
+  it('com bandeirada do feed, pula para a próxima logo após o fim (sem esperar 4h)', () => {
+    const start = Date.UTC(2030, 0, 1, 12)
+    const racesNow = [
+      { date: '2030-01-01', time: '12:00:00Z', raceName: 'Atual' },
+      { date: '2030-01-08', time: '12:00:00Z', raceName: 'Próxima' },
+    ]
+    // 1h após a largada (dentro da janela de 4h), mas o feed confirmou o fim:
+    const now = start + 60 * 60 * 1000
+    expect(getNextRace(racesNow, { now, liveRaceFinished: true }).raceName).toBe('Próxima')
+  })
+  it('bandeirada NÃO afeta corrida que ainda não largou', () => {
+    const now = Date.UTC(2030, 0, 1, 12)
+    const racesNow = [{ date: '2030-06-01', time: '12:00:00Z', raceName: 'Futura' }]
+    expect(getNextRace(racesNow, { now, liveRaceFinished: true }).raceName).toBe('Futura')
+  })
   it('cai na última quando todas já passaram', () => {
     const past = [
       { date: '2019-01-01', time: '12:00:00Z', raceName: 'X' },

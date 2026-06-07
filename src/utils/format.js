@@ -104,12 +104,29 @@ export function isRaceOver(race, now = Date.now()) {
   return !isNaN(end) && end < now
 }
 
-export function getNextRace(races) {
-  const now = Date.now()
+// A largada da corrida já aconteceu? (independe da janela de transmissão.)
+export function raceStarted(race, now = Date.now()) {
+  if (!race?.date) return false
+  const start = new Date(raceISO(race.date, race.time, '23:59:59')).getTime()
+  return !isNaN(start) && start <= now
+}
+
+// `liveRaceFinished`: a bandeira quadriculada já foi confirmada pelo feed oficial
+// ao vivo (ver HomePage/Header). Quando verdadeiro, encerramos a corrida que já
+// largou ASSIM QUE a transmissão termina, sem esperar a janela fixa de 4h
+// (RACE_BROADCAST_MS) expirar — aí o alvo passa para a próxima corrida e o
+// countdown recomeça. Sem esse sinal caímos só na janela de tempo, como antes.
+export function getNextRace(races, { now = Date.now(), liveRaceFinished = false } = {}) {
   // "A próxima" segue sendo a corrida ATUAL durante toda a transmissão ao vivo;
   // só depois que ela acaba é que apontamos para a seguinte. O countdown chega a
   // zero na largada (vira "ao vivo") e só troca de alvo quando a corrida termina.
-  return (races ?? []).find(r => !isRaceOver(r, now)) ?? (races ?? []).at(-1)
+  return (races ?? []).find(r => {
+    if (isRaceOver(r, now)) return false
+    // Bandeirada confirmada: a corrida já largou e o feed parou de transmitir →
+    // trata como encerrada mesmo dentro da janela de 4h.
+    if (liveRaceFinished && raceStarted(r, now)) return false
+    return true
+  }) ?? (races ?? []).at(-1)
 }
 
 export function isToday(dateStr) {

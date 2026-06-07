@@ -27,7 +27,13 @@ function NextRaceCountdown() {
     staleTime: 3_600_000,
   })
 
-  const nextRace = getNextRace(races ?? [])
+  // Mesmo sinal de bandeirada da HomePage: assim que o feed confirma o fim da
+  // corrida, avançamos para a próxima e a contagem regressiva reaparece no
+  // header (sem esperar a janela fixa de 4h).
+  const { data: live } = useLiveTiming()
+  const raceFinished = !!live && live.live === false && live.recentEvent?.type === 'Race'
+
+  const nextRace = getNextRace(races ?? [], { liveRaceFinished: raceFinished })
   const raceDateTime = nextRace ? raceISO(nextRace.date, nextRace.time) : null
   const countdown = useCountdown(raceDateTime)
 

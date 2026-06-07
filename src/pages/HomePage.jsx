@@ -242,7 +242,13 @@ export function HomePage() {
   const { data: live } = useLiveTiming()
 
   const photos = useDriverPhotos()
-  const nextRace = getNextRace(races ?? [])
+  // Bandeirada: o feed oficial deixou de transmitir e reporta a CORRIDA como
+  // evento recente (type 'Race'). Esse é o gatilho para a home parar de mostrar
+  // "Corrida ao vivo" e já apontar para a próxima corrida + countdown, sem
+  // esperar a janela fixa de 4h. Durante a corrida ao vivo, live.live é true e
+  // não há recentEvent, então o estado "ao vivo" se mantém normalmente.
+  const raceFinished = !!live && live.live === false && live.recentEvent?.type === 'Race'
+  const nextRace = getNextRace(races ?? [], { liveRaceFinished: raceFinished })
   const raceDateTime = nextRace ? raceISO(nextRace.date, nextRace.time) : null
   const raceDay = nextRace ? isToday(nextRace.date) : false
   const leader = standings?.[0]
