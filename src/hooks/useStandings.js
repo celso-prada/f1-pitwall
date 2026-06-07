@@ -37,15 +37,25 @@ export function useLiveStatusRefresh() {
 // dispositivo ainda não tenha passado pelo horário agendado (dados fictícios
 // costumam estar à frente do calendário). Quando há defasagem, os hooks abaixo
 // reconstroem standings/pódio a partir dos endpoints por-piloto frescos.
+// Agregados da temporada atual mudam só nos fins de semana de corrida, mas, uma
+// vez que o cache local fica desatualizado (localStorage de uma sessão antiga,
+// snapshot do build, ou edge servindo stale), o usuário podia ficar PRESO no
+// dado antigo até o staleTime vencer — foi o que prendeu a classificação de
+// equipes sem os pontos de Mônaco. `refetchOnMount: 'always'` garante o padrão
+// que queremos: pinta na hora pelo cache E dispara a busca do dado vivo na mesma
+// montagem, refrescando a tela se algo mudou. O staleTime continua valendo para
+// não repetir durante a mesma navegação.
+const REVALIDATE = { refetchOnMount: 'always' }
+
 function useSeasonFreshness() {
   const { data: races } = useQuery({
-    queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000,
+    queryKey: ['calendar', 'current'], queryFn: () => getCalendar('current'), staleTime: 3_600_000, ...REVALIDATE,
   })
   const { data: lastRace } = useQuery({
-    queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000,
+    queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000, ...REVALIDATE,
   })
   const { data: drivers } = useQuery({
-    queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000,
+    queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000, ...REVALIDATE,
   })
 
   const probeIds = (drivers ?? []).slice(0, 3).map(s => s.Driver.driverId)
@@ -72,6 +82,8 @@ const untilFresh = q => (q.state.data ? false : 60_000)
 export function useDriverStandings(season = 'current', { enabled = true } = {}) {
   const base = useQuery({
     queryKey: ['driverStandings', season], queryFn: () => getDriverStandings(season), staleTime: 300_000, enabled,
+    // Só a temporada atual revalida sempre; históricas são imutáveis.
+    refetchOnMount: season === 'current' ? 'always' : false,
   })
   const { staleRound } = useSeasonFreshness()
   const active = enabled && season === 'current' && !!staleRound && !!base.data?.length
@@ -90,6 +102,7 @@ export function useDriverStandings(season = 'current', { enabled = true } = {}) 
 export function useConstructorStandings(season = 'current') {
   const base = useQuery({
     queryKey: ['constructorStandings', season], queryFn: () => getConstructorStandings(season), staleTime: 300_000,
+    refetchOnMount: season === 'current' ? 'always' : false,
   })
   const { staleRound } = useSeasonFreshness()
   const active = season === 'current' && !!staleRound && !!base.data?.length
@@ -109,11 +122,11 @@ export function useConstructorStandings(season = 'current') {
 // montar o resultado do round recém-concluído via endpoints por-piloto.
 export function useLastRace() {
   const base = useQuery({
-    queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000,
+    queryKey: ['lastRace'], queryFn: getLastRaceResults, staleTime: 300_000, ...REVALIDATE,
   })
   const { staleRound, staleRace } = useSeasonFreshness()
   const { data: drivers } = useQuery({
-    queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000,
+    queryKey: ['driverStandings', 'current'], queryFn: () => getDriverStandings('current'), staleTime: 300_000, ...REVALIDATE,
   })
   const driverIds = (drivers ?? []).map(s => s.Driver.driverId)
   const active = !!staleRound && driverIds.length > 0

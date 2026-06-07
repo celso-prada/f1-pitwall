@@ -26,9 +26,10 @@ export default async function handler(req, res) {
     })
     const body = await upstream.text()
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
-    // Standings/last-race move only on race weekends; 5 min fresh + 1 day stale
-    // keeps it snappy while still picking up new results within minutes.
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
+    // 2 min fresh + 1 dia stale-while-revalidate: a borda converge rápido para o
+    // dado novo nos fins de semana de corrida (sem martelar a Jolpica) e, se ela
+    // cair, ainda serve a última cópia coerente por até um dia.
+    res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=86400')
     res.status(upstream.status).send(body)
   } catch (err) {
     res.status(502).json({ error: 'upstream_failed', message: String(err) })
