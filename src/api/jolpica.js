@@ -248,7 +248,11 @@ export async function getDriverCareerStats(driverId) {
 }
 
 export async function getConstructorRaces(constructorId) {
-  const data = await get(`/current/constructors/${constructorId}/results.json?limit=10`)
+  // O `limit` da Ergast conta LINHAS de resultado (2 por corrida, ordem
+  // CRESCENTE de round): limit=10 devolvia só os rounds 1–5 e cortava a
+  // corrida mais recente ("Resultados Recentes" sem Mônaco). limit=100 cobre
+  // a temporada inteira (24 corridas × 2 pilotos = 48 linhas).
+  const data = await get(`/current/constructors/${constructorId}/results.json?limit=100`)
   return data.MRData.RaceTable.Races ?? []
 }
 
