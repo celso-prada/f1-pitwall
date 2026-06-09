@@ -8,7 +8,7 @@
 //   navegação (SPA)  → network-first, cai no index.html do cache offline
 //   assets same-origin (JS/CSS/PNG/SVG hashados) → cache-first (imutáveis)
 //   cross-origin     → ignora (deixa o browser/queries cuidarem)
-const VERSION = 'pitwall-v2'
+const VERSION = 'pitwall-v3'
 const SHELL = `${VERSION}-shell`
 const ASSETS = `${VERSION}-assets`
 const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png']
@@ -50,6 +50,26 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (!sameOrigin) return
+
+  // Base de dados local (/data/*.json): muda a CADA deploy e o nome não tem
+  // hash → rede primeiro, cache só como fallback offline. Cache-first aqui
+  // congelava a temporada no aparelho (classificação de equipes presa sem os
+  // pontos da última corrida, mesmo com o servidor atualizado).
+  if (url.pathname.startsWith('/data/')) {
+    event.respondWith(
+      caches.open(ASSETS).then(async (cache) => {
+        try {
+          const resp = await fetch(request)
+          if (resp.ok) cache.put(request, resp.clone())
+          return resp
+        } catch {
+          const cached = await cache.match(request)
+          return cached || Response.error()
+        }
+      }),
+    )
+    return
+  }
 
   // Imagens/ícones têm nome fixo (não-hashado) → podem ser atualizados sem mudar
   // a URL. Stale-while-revalidate: serve do cache na hora E busca a versão nova em

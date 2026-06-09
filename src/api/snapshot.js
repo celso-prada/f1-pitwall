@@ -14,7 +14,9 @@ let snapPromise = null
 
 function load() {
   if (!snapPromise) {
-    snapPromise = fetch('/data/season-latest.json', { signal: AbortSignal.timeout(4000) })
+    // cache:'no-cache' = revalida no servidor (ETag/304) em vez de aceitar uma
+    // cópia local — este arquivo muda a cada deploy e já ficou preso em cache.
+    snapPromise = fetch('/data/season-latest.json', { cache: 'no-cache', signal: AbortSignal.timeout(4000) })
       .then(r => { if (!r.ok) throw new Error(`snapshot ${r.status}`); return r.json() })
       .catch(err => { snapPromise = null; throw err }) // allow retry on a later call
   }

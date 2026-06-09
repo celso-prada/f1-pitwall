@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { getConstructorStandings, getConstructorRaces } from '../api/jolpica'
+import { getConstructorRaces } from '../api/jolpica'
+import { useConstructorStandings } from '../hooks/useStandings'
 import { getWikipediaDriverData } from '../api/wikipedia'
 import { getTeamColor } from '../utils/teamColors'
 import { getCarImage, CARBON_BG } from '../utils/images'
@@ -16,11 +17,10 @@ export function TeamPage() {
   const { constructorId } = useParams()
   const navigate = useNavigate()
 
-  const { data: allStandings, isLoading } = useQuery({
-    queryKey: ['constructorStandings', 'current'],
-    queryFn: () => getConstructorStandings('current'),
-    staleTime: 300_000,
-  })
+  // Hook compartilhado (e não uma query crua): garante refetchOnMount:'always'
+  // e o bridge pós-corrida — sem ele, esta página mostrava a pontuação da
+  // equipe sem a última corrida enquanto a aba Construtores já estava certa.
+  const { data: allStandings, isLoading } = useConstructorStandings('current')
   const { data: races } = useQuery({
     queryKey: ['constructorRaces', constructorId],
     queryFn: () => getConstructorRaces(constructorId),
